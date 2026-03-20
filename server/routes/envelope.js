@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { createHash, randomUUID } from 'crypto';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, readFile, mkdir } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { compressPayload } from '../engine.js';
@@ -757,16 +757,33 @@ router.post('/', async (req, res, next) => {
     const docId = 'ENV-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + randomUUID().slice(0, 8).toUpperCase();
     const created = new Date().toISOString();
 
-    // Process each part
+    // Process each part — iterate manifest.parts to preserve slots
     const processedManifestParts = [];
     const processedDataParts = [];
     let totalSizeOriginal = 0;
     let totalSizeStored = 0;
 
-    for (const partInput of parts) {
-      const id = partInput.id;
-      const metaEntry = manifest.parts.find(m => m.id === id);
-      if (!metaEntry) continue;
+    for (const metaEntry of manifest.parts) {
+      const id = metaEntry.id;
+
+      // Slot with no supplied data → preserve as empty slot in manifest
+      if (metaEntry.slot) {
+        processedManifestParts.push({
+          id,
+          type: metaEntry.type || 'text/plain',
+          label: metaEntry.label || id,
+          slot: true,
+          slot_state: 'empty',
+          ...(metaEntry.assigned_to   ? { assigned_to: metaEntry.assigned_to }     : {}),
+          ...(metaEntry.workspace_hint ? { workspace_hint: metaEntry.workspace_hint } : {}),
+          ...(metaEntry.fill          ? { fill: metaEntry.fill }                    : {}),
+        });
+        continue; // no data entry for slots
+      }
+
+      // Embedded part — find data in parts[]
+      const partInput = parts.find(p => p.id === id);
+      if (!partInput) continue; // no data provided, skip silently
 
       // accept `content` (raw string) or `data` (raw string / base64 passthrough)
       const rawContent = partInput.content ?? partInput.data;
@@ -782,13 +799,11 @@ router.post('/', async (req, res, next) => {
       let storedSize;
 
       if (compress && originalSize > 1024) {
-        // compressPayload expects an object — wrap string in object
         const compressed = compressPayload({ _content: content });
         storedData = compressed.data;
         storedSize = compressed.compressed_size;
         isCompressed = true;
       } else {
-        // Store as base64 of UTF-8 bytes
         storedData = Buffer.from(content, 'utf-8').toString('base64');
         storedSize = Buffer.byteLength(storedData, 'utf-8');
         isCompressed = false;
@@ -874,6 +889,158 @@ router.post('/', async (req, res, next) => {
       total_size_original: totalSizeOriginal,
       total_size_stored: totalSizeStored,
       envelope_json: envelope,
+    });
+
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /:doc_id/fill — fill a slot in an existing envelope ─────────────────
+
+router.post('/:doc_id/fill', async (req, res, next) => {
+  try {
+    const { doc_id } = req.params;
+    const { slot_id, data, compressed: inputCompressed = false, signed_by, filename } = req.body;
+
+    if (!slot_id) return res.status(400).json({ ok: false, error: 'slot_id is required' });
+    if (!data)    return res.status(400).json({ ok: false, error: 'data is required (base64 or plain string)' });
+
+    // Load existing envelope HTML
+    const htmlPath = join(OUTPUT_DIR, `${doc_id}-envelope.html`);
+    let html;
+    try {
+      html = await readFile(htmlPath, 'utf-8');
+    } catch {
+      return res.status(404).json({ ok: false, error: `Envelope "${doc_id}" not found. Has it been created with POST /envelope?` });
+    }
+
+    // Extract embedded JSON
+    const scriptMatch = html.match(/<script[^>]+type="application\/poly\+json"[^>]*>([\s\S]*?)<\/script>/);
+    if (!scriptMatch) {
+      return res.status(422).json({ ok: false, error: 'Could not parse poly+json block in envelope HTML' });
+    }
+    const envelope = JSON.parse(scriptMatch[1]);
+
+    // Find slot in manifest
+    const manifestPart = envelope.manifest?.parts?.find(p => p.id === slot_id);
+    if (!manifestPart) {
+      return res.status(404).json({ ok: false, error: `Slot "${slot_id}" not found in manifest` });
+    }
+    if (!manifestPart.slot) {
+      return res.status(409).json({ ok: false, error: `Part "${slot_id}" is not a slot — it was embedded at pack time` });
+    }
+
+    // Process incoming data
+    // data may be: raw string, or base64-encoded binary
+    const rawContent = data;
+    const originalSize = Buffer.byteLength(rawContent, 'utf-8');
+
+    let storedData;
+    let isCompressed = false;
+    let storedSize;
+
+    const shouldCompress = !inputCompressed && originalSize > 1024;
+    if (shouldCompress) {
+      const compressed = compressPayload({ _content: rawContent });
+      storedData = compressed.data;
+      storedSize = compressed.compressed_size;
+      isCompressed = true;
+    } else {
+      storedData = inputCompressed
+        ? rawContent  // already base64-encoded by caller
+        : Buffer.from(rawContent, 'utf-8').toString('base64');
+      storedSize = Buffer.byteLength(storedData, 'utf-8');
+    }
+
+    const hash = sha256(storedData);
+    const filledAt = new Date().toISOString();
+
+    // Update manifest part
+    manifestPart.slot_state = 'filled';
+    manifestPart.filled_at = filledAt;
+    manifestPart.hash_at_fill = hash;
+    manifestPart.size_original = originalSize;
+    manifestPart.size_stored = storedSize;
+    manifestPart.compressed = isCompressed;
+    if (signed_by) manifestPart.filled_by = signed_by;
+    if (filename) manifestPart.filename = filename;
+
+    // Add or replace in parts[]
+    if (!envelope.parts) envelope.parts = [];
+    const existingIdx = envelope.parts.findIndex(p => p.id === slot_id);
+    const partEntry = { id: slot_id, compressed: isCompressed, data: storedData };
+    if (existingIdx >= 0) {
+      envelope.parts[existingIdx] = partEntry;
+    } else {
+      envelope.parts.push(partEntry);
+    }
+
+    // Recompute manifest hash
+    const manifestHash = sha256(JSON.stringify(envelope.manifest.parts));
+
+    // Regenerate HTML
+    const newHtml = buildEnvelopeHtml(envelope);
+    await writeFile(htmlPath, newHtml, 'utf-8');
+
+    // Count remaining empty slots
+    const emptySlots = envelope.manifest.parts.filter(
+      p => p.slot && (p.slot_state ?? 'empty') !== 'filled'
+    ).length;
+
+    return res.json({
+      ok: true,
+      doc_id,
+      slot_id,
+      slot_state: 'filled',
+      filled_at: filledAt,
+      hash: hash,
+      html_url: `/output/${doc_id}-envelope.html`,
+      manifest_hash: manifestHash,
+      empty_slots_remaining: emptySlots,
+      envelope_complete: emptySlots === 0,
+    });
+
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /:doc_id — return envelope JSON ──────────────────────────────────────
+
+router.get('/:doc_id', async (req, res, next) => {
+  try {
+    const { doc_id } = req.params;
+    const htmlPath = join(OUTPUT_DIR, `${doc_id}-envelope.html`);
+
+    let html;
+    try {
+      html = await readFile(htmlPath, 'utf-8');
+    } catch {
+      return res.status(404).json({ ok: false, error: `Envelope "${doc_id}" not found` });
+    }
+
+    const scriptMatch = html.match(/<script[^>]+type="application\/poly\+json"[^>]*>([\s\S]*?)<\/script>/);
+    if (!scriptMatch) {
+      return res.status(422).json({ ok: false, error: 'Could not parse poly+json block' });
+    }
+
+    const envelope = JSON.parse(scriptMatch[1]);
+
+    // Return manifest-only view (no part data) by default for security
+    const { parts: _parts, ...envelopeWithoutParts } = envelope;
+    const slots = envelope.manifest?.parts?.filter(p => p.slot) ?? [];
+    const emptySlots = slots.filter(p => (p.slot_state ?? 'empty') !== 'filled').length;
+
+    return res.json({
+      ok: true,
+      doc_id,
+      html_url: `/output/${doc_id}-envelope.html`,
+      manifest: envelopeWithoutParts.manifest,
+      header: envelopeWithoutParts.header,
+      slots_total: slots.length,
+      slots_empty: emptySlots,
+      envelope_complete: emptySlots === 0,
     });
 
   } catch (err) {
