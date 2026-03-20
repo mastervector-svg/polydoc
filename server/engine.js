@@ -57,10 +57,81 @@ function buildCssVars(jsonData) {
  * Inject JSON data into a template HTML string.
  * Also injects theme CSS vars into an existing :root block if visuals.colors is present.
  */
-function injectIntoTemplate(templateHtml, jsonData) {
+function buildMailTokens(jsonData) {
+  const h = jsonData.header || {};
+  const m = jsonData.metadata || {};
+  const v = jsonData.visuals || {};
+  const colors = v.colors || {};
+  const supplier = jsonData.content?.sections?.find(s => s.role === 'supplier')?.data || {};
+  const client   = jsonData.content?.sections?.find(s => s.role === 'client')?.data || {};
+  const tableSection = jsonData.content?.sections?.find(s => s.type === 'table');
+  const footer = tableSection?.footer || {};
+
+  return {
+    '{{TITLE}}':          m.title || h.doc_type || 'Dokument',
+    '{{DOC_ID}}':         h.doc_id || '',
+    '{{DOC_TYPE}}':       h.doc_type || '',
+    '{{CREATED}}':        h.created || '',
+    '{{PREHEADER_TEXT}}': m.title || '',
+    '{{PRIMARY_COLOR}}':  colors.primary || '#0d6efd',
+    '{{ACCENT_COLOR}}':   colors.accent  || '#ffc107',
+    '{{DOC_HEADING}}':    m.title || h.doc_type || 'Dokument',
+    '{{DOC_META_LINE}}':  `Číslo: ${h.doc_id || ''}`,
+    '{{SUPPLIER_NAME}}':  supplier.name    || '',
+    '{{SUPPLIER_ID}}':    supplier.id      || '',
+    '{{SUPPLIER_ADDRESS}}': supplier.address || '',
+    '{{SUPPLIER_BANK}}':  supplier.bank    || '',
+    '{{CLIENT_NAME}}':    client.name      || '',
+    '{{CLIENT_ID}}':      client.id        || '',
+    '{{CLIENT_ADDRESS}}': client.address   || '',
+    '{{TABLE_ROWS_HTML}}': (tableSection?.rows || []).map((row, i) => {
+      const bg = i % 2 === 0 ? '#ffffff' : '#f9fafb';
+      const cells = row.map(cell =>
+        `<td style="padding:10px 14px;font-size:13px;border-bottom:1px solid #e5e7eb;">${cell}</td>`
+      ).join('');
+      return `<tr style="background:${bg};">${cells}</tr>`;
+    }).join(''),
+    '{{TOTAL_BASE}}':     footer.total ? String(footer.total) : '',
+    '{{TOTAL_VAT}}':      footer.total && footer.vat_rate
+                            ? String(Math.round(footer.total * footer.vat_rate / 100)) : '',
+    '{{TOTAL_WITH_VAT}}': footer.total && footer.vat_rate
+                            ? String(Math.round(footer.total * (1 + footer.vat_rate / 100))) : '',
+    '{{CURRENCY}}':       footer.currency || 'CZK',
+    '{{VAT_RATE}}':       footer.vat_rate != null ? String(footer.vat_rate) : '21',
+    '{{VS}}':             m.custom_fields?.vs || '',
+    '{{KS}}':             m.custom_fields?.ks || '',
+    '{{FULL_DOC_URL}}':       `#`,
+    '{{AUTHOR}}':             m.author      || '',
+    '{{GENERATOR}}':          h.generator   || 'PolyDoc Render Engine',
+    '{{CONTENT_JSON}}':       JSON.stringify(jsonData.content || {}),
+    '{{CUSTOM_FIELDS_JSON}}': JSON.stringify(m.custom_fields || {}),
+    '{{VISUALS_JSON}}':       JSON.stringify(jsonData.visuals || {}),
+  };
+}
+
+function applyMailTokens(html, tokens) {
+  // Replace simple {{TOKEN}} placeholders
+  for (const [token, value] of Object.entries(tokens)) {
+    html = html.replaceAll(token, value);
+  }
+  // Handle conditional Mustache-style blocks {{#KEY}}...{{/KEY}}
+  html = html.replace(/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (_, key, content) => {
+    const token = `{{${key}}}`;
+    const val = tokens[token];
+    return val ? content.replace(token, val) : '';
+  });
+  return html;
+}
+
+function injectIntoTemplate(templateHtml, jsonData, isMail = false) {
   // Replace the raw-data script block
   const injectedScript = `<script type="application/poly+json" id="raw-data">\n${JSON.stringify(jsonData, null, 2)}\n</script>`;
   let html = templateHtml.replace(RAW_DATA_REGEX, injectedScript);
+
+  // For mail version: replace {{PLACEHOLDER}} tokens
+  if (isMail) {
+    html = applyMailTokens(html, buildMailTokens(jsonData));
+  }
 
   // Inject CSS vars into :root block if theme colors are defined
   const cssVars = buildCssVars(jsonData);
@@ -131,5 +202,5 @@ export async function renderFull(jsonData) {
 export async function renderMail(jsonData) {
   const templatePath = join(TEMPLATES_DIR, 'polydoc-mail.html');
   const templateHtml = await readFile(templatePath, 'utf-8');
-  return injectIntoTemplate(templateHtml, jsonData);
+  return injectIntoTemplate(templateHtml, jsonData, true);
 }

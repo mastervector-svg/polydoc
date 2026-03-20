@@ -19,7 +19,7 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ ok: false, errors });
     }
 
-    const { doc_id, doc_type } = body;
+    const { doc_id, doc_type } = body.header;
 
     // Render both views
     const [fullHtml, mailHtml] = await Promise.all([
