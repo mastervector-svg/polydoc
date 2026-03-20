@@ -12,69 +12,69 @@ PolyDoc format versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 #### Envelope format (`doc_type: "envelope"`)
-- `spec/POLYDOC_ENVELOPE.md` — kompletní specifikace kryptografické obálky
-  - Libovolný obsah jako části: text, JSON, YAML, PDF, ZIP, tar.gz, vnořený PolyDoc, …
-  - Anonymní příjemci přes SHA256 key hinty — server nikdy nezná identity
-  - Podpis pokrývá manifest (hash každé části), ne obsah — potvrzení bez otevření
-  - Hybrid encryption: AES-256-GCM obsah + RSA-OAEP klíče per-recipient
-  - Lazy load + selektivní šifrování per-part
-- `examples/envelope-demo.html` — živý příklad: průvodní dopis + faktura + platební podmínky
+- `spec/POLYDOC_ENVELOPE.md` — complete specification of the cryptographic envelope
+  - Arbitrary content as parts: text, JSON, YAML, PDF, ZIP, tar.gz, nested PolyDoc, …
+  - Anonymous recipients via SHA256 key hints — server never knows identities
+  - Signature covers the manifest (hash of each part), not content — confirmation without opening
+  - Hybrid encryption: AES-256-GCM content + RSA-OAEP keys per-recipient
+  - Lazy load + selective per-part encryption
+- `examples/envelope-demo.html` — live example: cover letter + invoice + payment terms
 
 #### Collaborative Slots (§10)
-- `slot: true` v manifest.parts — část čekající na vyplnění
-- `fill_prompt` — přirozený jazyk jako instrukce pro AI agenta
-- `fill.mode: manual | on-demand | scheduled` — kdy a jak se naplní
-- `workspace://` schéma — propojení slotu s lokálním souborem
+- `slot: true` in manifest.parts — a part awaiting filling
+- `fill_prompt` — natural language as instruction for an AI agent
+- `fill.mode: manual | on-demand | scheduled` — when and how it gets filled
+- `workspace://` scheme — linking a slot to a local file
 - `slot_state: empty → filled` + `hash_at_fill`, `filled_at`, `filled_by`
 
 #### Server API — Envelope endpoints
-- `POST /envelope` — vytvoř obálku (embedded části + prázdné sloty)
-- `GET /envelope/:doc_id` — stav obálky: manifest, `slots_empty`, `envelope_complete`
-- `POST /envelope/:doc_id/fill` — naplň slot daty (komprimuje, hashuje, přegeneruje HTML)
-- `POST /envelope/:doc_id/fill-ai` — **LLM agent naplní slot**
-  - Sestaví kontext z vyplněných částí + `fill_prompt`
-  - Zavolá OpenAI-compatible API (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_KEY_HEADER`, `LLM_MODEL`)
-  - `auto_fill: false` → vrátí draft k review; `auto_fill: true` → naplní přímo
-  - Testováno s: Ollama (lokální), `qwen2.5-coder:32b` (vLLM)
+- `POST /envelope` — create an envelope (embedded parts + empty slots)
+- `GET /envelope/:doc_id` — envelope status: manifest, `slots_empty`, `envelope_complete`
+- `POST /envelope/:doc_id/fill` — fill a slot with data (compresses, hashes, regenerates HTML)
+- `POST /envelope/:doc_id/fill-ai` — **LLM agent fills a slot**
+  - Assembles context from filled parts + `fill_prompt`
+  - Calls OpenAI-compatible API (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_KEY_HEADER`, `LLM_MODEL`)
+  - `auto_fill: false` → returns draft for review; `auto_fill: true` → fills directly
+  - Tested with: Ollama (local), `qwen2.5-coder:32b` (vLLM)
 
 #### VS Code Extension (scaffold)
-- `vscode-extension/` — TypeScript scaffold, nepublikováno
-  - Sidebar panel: skenuje workspace, zobrazí obálky a jejich sloty
-  - Fill slot jedním klikem — vybere soubor z workspace, pošle na server nebo patchne HTML přímo
-  - Pack Envelope wizard — vyber soubory, pojmenuj, embed nebo slot
-  - Preview panel — renderuje PolyDoc/Envelope přímo v editoru
-  - Scheduled fill — cron parser, minutový ticker, auto-fetch z URL
+- `vscode-extension/` — TypeScript scaffold, unpublished
+  - Sidebar panel: scans workspace, displays envelopes and their slots
+  - Fill slot with one click — selects a file from the workspace, sends to server or patches HTML directly
+  - Pack Envelope wizard — select files, name them, embed or slot
+  - Preview panel — renders PolyDoc/Envelope directly in the editor
+  - Scheduled fill — cron parser, minute ticker, auto-fetch from URL
 
 ### Changed
-- README: Envelope přidán jako čtvrtý use case s plným popisem
-- Roadmapa aktualizována — Envelope přesunuto do hotových
+- README: Envelope added as the fourth use case with full description
+- Roadmap updated — Envelope moved to completed
 
 ---
 
 ## [1.0.1] — 2026-03-20
 
 ### Added
-- JSON Schema (`schema/poly-v1.0.schema.json`) — IDE autocomplete, strojová validace
+- JSON Schema (`schema/poly-v1.0.schema.json`) — IDE autocomplete, machine validation
 - Node.js render engine (`server/`) — `POST /render`, `POST /validate`, `GET /schema/:type`, Channel discovery
-- Docker image — `ghcr.io/mastervector-svg/polydoc:latest`, GitHub Actions CI/CD na každý tag
-- Bilingual demo (`examples/invoice-demo.html`) — EN/CS přepínač jazyků v toolbaru
-- Human/Agent view — tlačítko 👤/🤖 ukazuje co vidí člověk vs co čte LLM ze stejného souboru
-- Multilang mail rendering — server vybere jazyk z `options.lang` při `POST /render`
-- `LocalizedString` — textová pole podporují `{"en":"...","cs":"..."}` objekty
-- `i18n` blok v dokumentu pro UI labely (supplier, client, table headers...)
-- Selektivní DEFLATE komprese — per-sekce vlastnost, `header.compression.threshold`
+- Docker image — `ghcr.io/mastervector-svg/polydoc:latest`, GitHub Actions CI/CD on every tag
+- Bilingual demo (`examples/invoice-demo.html`) — EN/CS language switcher in toolbar
+- Human/Agent view — 👤/🤖 button shows what a human sees vs. what an LLM reads from the same file
+- Multilang mail rendering — server selects language from `options.lang` in `POST /render`
+- `LocalizedString` — text fields support `{"en":"...","cs":"..."}` objects
+- `i18n` block in document for UI labels (supplier, client, table headers…)
+- Selective DEFLATE compression — per-section property, `header.compression.threshold`
 - Lazy load — `lazy_mode: inline | on-demand`, `header.lazy.threshold`
-- AES-256-GCM fragment encryption spec (`header.encryption`, klíč v URL fragmentu)
+- AES-256-GCM fragment encryption spec (`header.encryption`, key in URL fragment)
 
 ### Fixed
-- Mail šablona plně tokenizována — hardcoded české labely → `{{LABEL_*}}` tokeny
-- Proklik v `faktura-mail.html` → živá full verze na GitHub Pages
-- Responsivita — toolbar, stránka i tabulky na mobilních rozlišeních
-- Footer dokumentu zobrazuje spec verzi s odkazem na `header.spec` URL
-- `doc_id`/`doc_type` validace správně z `header.*` (ne z rootu)
+- Mail template fully tokenised — hardcoded Czech labels → `{{LABEL_*}}` tokens
+- Click-through in `faktura-mail.html` → live full version on GitHub Pages
+- Responsiveness — toolbar, page, and tables at mobile resolutions
+- Document footer shows spec version with link to `header.spec` URL
+- `doc_id`/`doc_type` validation correctly reads from `header.*` (not from root)
 
 ### Changed
-- Roadmapa aktualizována — JSON Schema, render engine, Docker přesunuty do hotových
+- Roadmap updated — JSON Schema, render engine, Docker moved to completed
 
 ---
 
@@ -102,15 +102,15 @@ PolyDoc format versioning follows [Semantic Versioning](https://semver.org/).
 
 ### [1.2.0]
 - `npx polydoc render invoice.json` — CLI tool
-- Auto-detect jazyka prohlížeče v full verzi (`navigator.language`)
-- On-demand překlad přes překladač API (DeepL / LibreTranslate)
-- SubtleCrypto ES256 ověření podpisu (browser)
-- DOMPurify integrace pro `rich_text` sekce
-- Více témat: `modern-dark`, `classic`, `minimal`
-- Shared interpreter na CDN (`poly-interpreter.js`)
+- Auto-detect browser language in full version (`navigator.language`)
+- On-demand translation via translation API (DeepL / LibreTranslate)
+- SubtleCrypto ES256 signature verification (browser)
+- DOMPurify integration for `rich_text` sections
+- More themes: `modern-dark`, `classic`, `minimal`
+- Shared interpreter on CDN (`poly-interpreter.js`)
 
 ### [2.0.0]
-- MCP server — PolyDoc jako MCP tool pro AI agenty
-- Integrace: Lovable, Cursor, n8n
+- MCP server — PolyDoc as MCP tool for AI agents
+- Integrations: Lovable, Cursor, n8n
 - WYSIWYG editor
 - Offline-first (Service Worker)

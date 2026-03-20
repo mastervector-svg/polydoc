@@ -1,33 +1,33 @@
-# PolyDoc — Envelope formát
+# PolyDoc — Envelope Format
 
-> **Motto:** Kryptografická zásilka. Hlavička čitelná vždy. Obsah otevřeš jen ty.
-
----
-
-## §1 Co je Envelope
-
-Envelope (`doc_type: "envelope"`) je speciální typ PolyDoc dokumentu, který slouží jako **kryptografická obálka** pro libovolný obsah — dokumenty, soubory, data, jiné PolyDoc soubory.
-
-### Obálka vs. dokument
-
-| Vlastnost | Dokument (`invoice`, `contract`, …) | Obálka (`envelope`) |
-|-----------|--------------------------------------|----------------------|
-| Vizuální sekce (`content.sections`) | Ano — renderuje se jako dokument | Ne — obálka nemá vizuální sekce |
-| Části (`parts[]`) | Ne | Ano — libovolný počet, libovolné typy |
-| Příjemci | Není relevantní | `manifest.recipients[]` s anonymními hinty |
-| Podpis | Pokrývá celý dokument | Pokrývá manifest (hash každé části) |
-| Mail část | Volitelná | `mail_part` — vždy statické HTML shrnutí |
-
-**Klíčová vlastnost:** hlavička a manifest jsou **vždy čitelné bez klíče**. Obsah jednotlivých částí je volitelně šifrovaný, komprimovaný nebo lazy-načítaný.
-
-Obálka umožňuje příjemci:
-- Potvrdit, že zásilku obdržel (ověřením podpisu manifestu) — **bez znalosti obsahu**
-- Vidět, co obálka obsahuje (popis částí, typy, velikosti) — bez otevření
-- Otevřít pouze ty části, ke kterým má klíč
+> **Motto:** A cryptographic shipment. The header is always readable. Only you can open the contents.
 
 ---
 
-## §2 Struktura JSON
+## §1 What is an Envelope
+
+An Envelope (`doc_type: "envelope"`) is a special type of PolyDoc document that acts as a **cryptographic wrapper** for any content — documents, files, data, other PolyDoc files.
+
+### Envelope vs. document
+
+| Property | Document (`invoice`, `contract`, …) | Envelope (`envelope`) |
+|----------|--------------------------------------|----------------------|
+| Visual sections (`content.sections`) | Yes — rendered as a document | No — envelopes have no visual sections |
+| Parts (`parts[]`) | No | Yes — any number, any types |
+| Recipients | Not relevant | `manifest.recipients[]` with anonymous hints |
+| Signature | Covers the entire document | Covers the manifest (hash of each part) |
+| Mail part | Optional | `mail_part` — always a static HTML summary |
+
+**Key property:** the header and manifest are **always readable without a key**. The content of individual parts is optionally encrypted, compressed, or lazy-loaded.
+
+The envelope allows the recipient to:
+- Confirm that the shipment was received (by verifying the manifest signature) — **without knowing the contents**
+- See what the envelope contains (part descriptions, types, sizes) — without opening it
+- Open only those parts for which they have a key
+
+---
+
+## §2 JSON Structure
 
 ```json
 {
@@ -40,7 +40,7 @@ Obálka umožňuje příjemci:
       "algorithm": "ES256",
       "covers": "manifest",
       "value": "base64...",
-      "note": "Podpis pokrývá manifest (hash každé části), ne obsah — lze potvrdit bez otevření"
+      "note": "Signature covers the manifest (hash of each part), not the content — can be verified without opening"
     }
   },
   "manifest": {
@@ -98,61 +98,61 @@ Obálka umožňuje příjemci:
   "mail_part": {
     "type": "text/html",
     "label": { "en": "You have received a secure package", "cs": "Obdrželi jste zabezpečenou zásilku" },
-    "data": "staticke HTML pro mail verzi — bez JS, jen info + CTA odkaz"
+    "data": "static HTML for mail version — no JS, info + CTA link only"
   }
 }
 ```
 
-### Povinná pole
+### Required fields
 
-| Pole | Povinné | Popis |
-|------|---------|-------|
-| `header.format` | Ano | `"poly/1.0"` |
-| `header.doc_id` | Ano | Unikátní ID obálky (doporučený prefix `ENV-`) |
-| `header.doc_type` | Ano | Musí být `"envelope"` |
-| `header.created` | Ano | ISO 8601 timestamp |
-| `manifest.parts[]` | Ano | Alespoň jedna část |
-| `manifest.parts[].id` | Ano | Unikátní ID části v rámci obálky |
-| `manifest.parts[].type` | Ano | MIME typ obsahu |
+| Field | Required | Description |
+|-------|----------|-------------|
+| `header.format` | Yes | `"poly/1.0"` |
+| `header.doc_id` | Yes | Unique envelope ID (recommended prefix `ENV-`) |
+| `header.doc_type` | Yes | Must be `"envelope"` |
+| `header.created` | Yes | ISO 8601 timestamp |
+| `manifest.parts[]` | Yes | At least one part |
+| `manifest.parts[].id` | Yes | Unique part ID within the envelope |
+| `manifest.parts[].type` | Yes | MIME type of the content |
 
-### Volitelná pole
+### Optional fields
 
-| Pole | Popis |
-|------|-------|
-| `header.signature` | Kryptografický podpis manifestu |
-| `manifest.label` | Lidsky čitelný název zásilky |
-| `manifest.sender` | Hint veřejného klíče odesílatele |
-| `manifest.recipients[]` | Anonymní příjemci s hinty klíčů |
-| `parts[]` | Inline obsah — může chybět pokud jsou části lazy |
-| `mail_part` | Statická HTML verze pro email |
-
----
-
-## §3 Potvrzení bez znalosti obsahu
-
-Podpis v `header.signature` pokrývá **manifest** — konkrétně hash každé části v `manifest.parts[].hash`, nikoliv obsah samotný.
-
-Díky tomu může příjemce:
-1. Přečíst manifest (vždy nešifrovaný)
-2. Ověřit podpis manifestu (ES256 přes WebCrypto API)
-3. **Potvrdit příjem zásilky** odesílateli — bez toho, aby otevřel jedinou část
-
-Toto je klíčová vlastnost pro auditní scénáře: potvrzení doručení je kryptograficky prokazatelné bez odhalení obsahu.
-
-### Postup ověření
-
-```
-1. Načti manifest z obálky (vždy plaintext JSON)
-2. Serializuj manifest.parts[] jako kanonické JSON (sorted keys)
-3. Ověř ES256 podpis v header.signature.value
-   použij veřejný klíč odesílatele (z manifest.sender nebo out-of-band)
-4. Pokud podpis platí → zásilka nebyla modifikována od podpisu
-5. Odpověz odesílateli hash(manifest) jako potvrzení — bez obsahu
-```
+| Field | Description |
+|-------|-------------|
+| `header.signature` | Cryptographic signature of the manifest |
+| `manifest.label` | Human-readable name of the shipment |
+| `manifest.sender` | Sender's public key hint |
+| `manifest.recipients[]` | Anonymous recipients with key hints |
+| `parts[]` | Inline content — may be absent if parts are lazy |
+| `mail_part` | Static HTML version for email |
 
 ---
 
-## §4 Anonymní příjemci
+## §3 Confirmation Without Knowledge of Contents
+
+The signature in `header.signature` covers the **manifest** — specifically the hash of each part in `manifest.parts[].hash`, not the content itself.
+
+This allows the recipient to:
+1. Read the manifest (always unencrypted)
+2. Verify the manifest signature (ES256 via WebCrypto API)
+3. **Confirm receipt of the shipment** to the sender — without opening a single part
+
+This is a key property for audit scenarios: delivery confirmation is cryptographically provable without revealing the contents.
+
+### Verification procedure
+
+```
+1. Load the manifest from the envelope (always plaintext JSON)
+2. Serialize manifest.parts[] as canonical JSON (sorted keys)
+3. Verify the ES256 signature in header.signature.value
+   use the sender's public key (from manifest.sender or out-of-band)
+4. If the signature is valid → the shipment has not been modified since signing
+5. Reply to the sender with hash(manifest) as confirmation — without the contents
+```
+
+---
+
+## §4 Anonymous Recipients
 
 ```json
 "recipients": [
@@ -161,57 +161,57 @@ Toto je klíčová vlastnost pro auditní scénáře: potvrzení doručení je k
 ]
 ```
 
-`key_hint` = `SHA256(recipient_public_key)` — otisk veřejného klíče příjemce.
+`key_hint` = `SHA256(recipient_public_key)` — a fingerprint of the recipient's public key.
 
-**Server nikdy nezná identitu příjemce.** Zná pouze otisky klíčů. Pouze skutečný příjemce dokáže:
-- Spočítat otisk svého vlastního veřejného klíče
-- Porovnat s `key_hint` v manifestu
-- Zjistit, které části jsou pro něj určeny
+**The server never knows the identity of the recipient.** It only knows key fingerprints. Only the actual recipient can:
+- Compute the fingerprint of their own public key
+- Compare it with `key_hint` in the manifest
+- Find out which parts are intended for them
 
-Odesílatel zašifruje každou část pro konkrétní příjemce pomocí jejich veřejných klíčů (asymetrické šifrování obálky symetrického AES klíče — hybrid encryption pattern).
+The sender encrypts each part for specific recipients using their public keys (asymmetric encryption of the symmetric AES key — hybrid encryption pattern).
 
-### Proč otisk, ne celý klíč?
+### Why a fingerprint, not the full key?
 
-Celý veřejný klíč by byl identifikátorem — například e-mailová adresa v certifikátu by prozradila identitu. SHA256 otisk je nepřiřaditelný bez znalosti samotného klíče.
+The full public key would be an identifier — for example, an email address in a certificate would reveal the identity. A SHA256 fingerprint is non-attributable without knowledge of the key itself.
 
 ---
 
-## §5 Částečné otevření
+## §5 Partial Opening
 
-Obálka podporuje **tři vrstvy přístupu**, které lze libovolně kombinovat:
+The envelope supports **three access layers** that can be freely combined:
 
-### mail_part — vždy čitelné
+### mail_part — always readable
 
-`mail_part` je statické HTML bez JS. Renderuje se automaticky jako banner nad manifestem. Obsahuje jen základní informaci: "Obdrželi jste zásilku s N přílohami" + CTA odkaz na interaktivní verzi.
+`mail_part` is static HTML without JS. It is rendered automatically as a banner above the manifest. It contains only basic information: "You have received a shipment with N attachments" + a CTA link to the interactive version.
 
 ```json
 "mail_part": {
   "type": "text/html",
   "label": { "cs": "Obdrželi jste zabezpečenou zásilku" },
-  "data": "<p>Obdrželi jste zásilku se 3 přílohami...</p><a href='...'>Otevřít</a>"
+  "data": "<p>You have received a shipment with 3 attachments...</p><a href='...'>Open</a>"
 }
 ```
 
-### Manifest — vždy čitelný (bez klíče)
+### Manifest — always readable (without a key)
 
-Interpreter vždy zobrazí manifest: seznam částí s popisem, typy, velikostmi a ikonami. Příjemce vidí, **co** obálka obsahuje, i bez klíče.
+The interpreter always displays the manifest: a list of parts with descriptions, types, sizes, and icons. The recipient can see **what** the envelope contains, even without a key.
 
-### Části — volitelně šifrované nebo lazy
+### Parts — optionally encrypted or lazy
 
-Každá část v `parts[]` může mít jiný přístupový režim:
+Each part in `parts[]` can have a different access mode:
 
-| Stav části | Chování interpreteru |
+| Part state | Interpreter behaviour |
 |-----------|----------------------|
-| `encrypted: false, lazy: false` | Zobrazí tlačítko "Otevřít" — okamžitý přístup |
-| `encrypted: true` | Zobrazí pole pro zadání klíče nebo derivaci z URL fragmentu |
-| `lazy: true` | Zobrazí tlačítko "Načíst" — fetch na `src` při kliknutí |
-| `encrypted: true, lazy: true` | Lazy fetch + dešifrování po zadání klíče |
+| `encrypted: false, lazy: false` | Shows an "Open" button — immediate access |
+| `encrypted: true` | Shows a field for entering a key or deriving one from a URL fragment |
+| `lazy: true` | Shows a "Load" button — fetches `src` on click |
+| `encrypted: true, lazy: true` | Lazy fetch + decryption after entering the key |
 
 ---
 
 ## §6 Multi-recipient
 
-Jedna obálka může mít více příjemců, každý s přístupem k jiné podmnožině částí:
+A single envelope can have multiple recipients, each with access to a different subset of parts:
 
 ```json
 "recipients": [
@@ -233,139 +233,139 @@ Jedna obálka může mít více příjemců, každý s přístupem k jiné podmn
 ]
 ```
 
-**Vzor:** Hybrid encryption — AES-256-GCM klíč části je zašifrován RSA-OAEP veřejným klíčem každého oprávněného příjemce zvlášť. Obsah samotný je zašifrován jen jednou (AES).
+**Pattern:** Hybrid encryption — the AES-256-GCM key for each part is encrypted with the RSA-OAEP public key of each authorised recipient separately. The content itself is encrypted only once (AES).
 
-Příjemce Alice:
-1. Najde svůj `key_hint` v `recipients[]`
-2. Dešifruje `encrypted_keys.invoice` svým soukromým klíčem → získá AES klíč
-3. Dešifruje část `invoice` tímto AES klíčem
+Recipient Alice:
+1. Finds her `key_hint` in `recipients[]`
+2. Decrypts `encrypted_keys.invoice` with her private key → obtains the AES key
+3. Decrypts the `invoice` part using this AES key
 
-Příjemce Bob získá AES klíče pro obě části a může otevřít obě.
+Recipient Bob obtains AES keys for both parts and can open both.
 
 ---
 
-## §7 Podporované typy obsahu (`parts[].type`)
+## §7 Supported Content Types (`parts[].type`)
 
-| MIME typ | Popis | Interpreter chování |
-|----------|-------|---------------------|
-| `text/markdown` | Markdown text | Renderuje jako HTML (simple regex) |
-| `text/html` | HTML obsah | Sandboxovaný `<iframe>` |
-| `text/plain` | Prostý text | `<pre>` blok |
+| MIME type | Description | Interpreter behaviour |
+|-----------|-------------|----------------------|
+| `text/markdown` | Markdown text | Rendered as HTML (simple regex) |
+| `text/html` | HTML content | Sandboxed `<iframe>` |
+| `text/plain` | Plain text | `<pre>` block |
 | `application/json` | JSON data | Syntax-highlighted code block |
-| `application/pdf` | PDF dokument | Nabídne stažení nebo inline viewer |
-| `application/zip` | ZIP archiv | Nabídne stažení |
-| `application/polydoc` | Vnořený PolyDoc | Renderuje rekurzivně v iframe |
-| `image/png` | PNG obrázek | `<img>` tag |
-| `image/jpeg` | JPEG obrázek | `<img>` tag |
-| `image/svg+xml` | SVG obrázek | `<img>` tag (sanitizovaný) |
-| Libovolný MIME | Jakýkoliv obsah | Nabídne stažení jako soubor |
+| `application/pdf` | PDF document | Offers download or inline viewer |
+| `application/zip` | ZIP archive | Offers download |
+| `application/polydoc` | Nested PolyDoc | Rendered recursively in iframe |
+| `image/png` | PNG image | `<img>` tag |
+| `image/jpeg` | JPEG image | `<img>` tag |
+| `image/svg+xml` | SVG image | `<img>` tag (sanitised) |
+| Any MIME | Any content | Offers download as file |
 
-Obálka není omezena na výše uvedené typy — akceptuje **libovolný MIME typ**. Neznámé typy interpreter nabídne ke stažení.
+The envelope is not limited to the types listed above — it accepts **any MIME type**. Unknown types are offered for download by the interpreter.
 
 ---
 
-## §8 Interpreter chování
+## §8 Interpreter Behaviour
 
-### Zobrazení manifestu
+### Displaying the manifest
 
-Interpreter při otevření obálky vždy zobrazí:
+When opening an envelope, the interpreter always displays:
 
 ```
-[Název zásilky z manifest.label]
-[mail_part banner — pokud existuje]
+[Shipment name from manifest.label]
+[mail_part banner — if present]
 
-Části zásilky:
-  📄 Faktura        text/markdown  2.4 KB  [Otevřít]
-  🔒 Smlouva        application/pdf  44 KB  [Zadejte klíč]  [compressed]
-  ⏳ Náhled         text/html  —  [Načíst]
+Shipment parts:
+  📄 Invoice        text/markdown  2.4 KB  [Open]
+  🔒 Contract       application/pdf  44 KB  [Enter key]  [compressed]
+  ⏳ Preview        text/html  —  [Load]
 ```
 
-### Ikony dle MIME typu
+### Icons by MIME type
 
-| Typ | Ikona |
-|-----|-------|
+| Type | Icon |
+|------|------|
 | `text/markdown` | 📄 |
 | `application/json` | 📋 |
 | `image/*` | 🖼️ |
 | `application/zip` | 📦 |
 | `application/polydoc` | 📎 |
-| Šifrovaná část | 🔒 |
-| Lazy část (ještě nenačtena) | ⏳ |
-| Ostatní | 📁 |
+| Encrypted part | 🔒 |
+| Lazy part (not yet loaded) | ⏳ |
+| Other | 📁 |
 
-### Otevření části
+### Opening a part
 
 ```
-Klik "Otevřít":
-  compressed: true  → dekompresi base64(deflate(data)) → zobrazit
-  compressed: false → zobrazit data přímo
+Click "Open":
+  compressed: true  → decompress base64(deflate(data)) → display
+  compressed: false → display data directly
 
-Klik "Načíst" (lazy):
-  lazy_mode: on-demand  → fetch(src) → zobrazit, nezapamatovat
-  lazy_mode: inline     → fetch(src) → zobrazit, uložit do parts[]
+Click "Load" (lazy):
+  lazy_mode: on-demand  → fetch(src) → display, do not store
+  lazy_mode: inline     → fetch(src) → display, save into parts[]
 
-Klik "Zadejte klíč" (encrypted):
-  → zobrazit input field
-  → uživatel zadá klíč (nebo derivace z URL fragmentu)
-  → WebCrypto AES-GCM decrypt → zobrazit
+Click "Enter key" (encrypted):
+  → show input field
+  → user enters key (or derived from URL fragment)
+  → WebCrypto AES-GCM decrypt → display
 ```
 
-### Modal pro obsah
+### Modal for content
 
-Každá otevřená část se zobrazí v modálním okně:
+Each opened part is displayed in a modal window:
 
-| Typ obsahu | Způsob renderování |
-|-----------|-------------------|
-| `text/markdown` | Jednoduchý regex rendering (nadpisy, tučné, seznamy, kód) |
+| Content type | Rendering method |
+|-------------|-----------------|
+| `text/markdown` | Simple regex rendering (headings, bold, lists, code) |
 | `text/html` | `<iframe sandbox="allow-scripts">` |
 | `application/json` | Syntax-highlighted `<pre>` |
-| `image/*` | `<img>` tag, plná šířka |
-| Ostatní | Tlačítko "Stáhnout jako soubor" |
+| `image/*` | `<img>` tag, full width |
+| Other | "Download as file" button |
 
 ---
 
-## §9 Příklady použití
+## §9 Usage Examples
 
-### Notářský balík
-Smlouva + faktura + přílohy v jedné zásilce. Klient potvrdí příjem ověřením podpisu manifestu (bez otevření obsahu). Notář otevře zásilku svým klíčem.
+### Notarial package
+Contract + invoice + attachments in a single shipment. The client confirms receipt by verifying the manifest signature (without opening the contents). The notary opens the envelope with their key.
 
 ```
-manifest.parts: [smlouva (PDF, encrypted), faktura (Markdown), přílohy (ZIP)]
-recipients: [klient, notář, archiv]
+manifest.parts: [contract (PDF, encrypted), invoice (Markdown), attachments (ZIP)]
+recipients: [client, notary, archive]
 ```
 
-### AI agent → uživatel
-Agent vrátí výsledky analýzy ve více formátech (JSON data, Markdown report, vizualizace jako HTML). Uživatel otevře preferovaný formát.
+### AI agent → user
+The agent returns analysis results in multiple formats (JSON data, Markdown report, visualisation as HTML). The user opens their preferred format.
 
 ```
 manifest.parts: [analysis.json, report.md, chart.html]
-encrypted: false (ale komprimované)
+encrypted: false (but compressed)
 ```
 
 ### Secure data room
-Due diligence balík pro M&A transakci. Každý účastník (buyer, auditor, právník) má přístup jen ke svým částem.
+Due diligence package for an M&A transaction. Each participant (buyer, auditor, lawyer) has access only to their own parts.
 
 ```
 manifest.parts: [financial-model.xlsx, legal-docs.zip, tech-audit.pdf]
 recipients: [buyer, auditor, legal]
-každý recipient: jiná podmnožina parts[]
+each recipient: different subset of parts[]
 ```
 
-### Transfer mezi systémy
-Jako transfer format (viz `POLYDOC_TRANSFER.md`), ale s kryptografickým podpisem a volitelným šifrováním. Vhodné pro: předání projektu mezi týmy, bezpečný archiv, přenos přes nedůvěryhodný kanál.
+### Transfer between systems
+As a transfer format (see `POLYDOC_TRANSFER.md`), but with a cryptographic signature and optional encryption. Suitable for: handing off a project between teams, secure archiving, transmission over an untrusted channel.
 
 ```
 manifest.parts: [config.json (polydoc/transfer), knowledge-base.md, assets.zip]
-signature: ES256 (pokrývá manifest)
+signature: ES256 (covers manifest)
 ```
 
 ---
 
-## §10 Slots — kolaborativní vyplňování
+## §10 Slots — Collaborative Filling
 
-**Slot** je část obálky, kterou odesílatel definoval ale záměrně nevyplnil. Označuje kdo ji má vyplnit, jakým způsobem a kdy.
+A **slot** is a part of the envelope that the sender has defined but intentionally left unfilled. It designates who should fill it, in what way, and when.
 
-### Definice slotu v manifest.parts
+### Slot definition in manifest.parts
 
 ```json
 {
@@ -382,7 +382,7 @@ signature: ES256 (pokrývá manifest)
 }
 ```
 
-Slot s on-demand nebo plánovaným obnovením:
+Slot with on-demand or scheduled renewal:
 
 ```json
 {
@@ -399,27 +399,27 @@ Slot s on-demand nebo plánovaným obnovením:
 }
 ```
 
-### Pole slotu
+### Slot fields
 
-| Pole | Povinné | Popis |
-|------|---------|-------|
-| `slot` | Ano | `true` — označuje část jako slot čekající na vyplnění |
-| `assigned_to.key_hint` | Ne | SHA256 otisk klíče příjemce zodpovědného za vyplnění |
-| `workspace_hint` | Ne | Doporučený název souboru pro propojení s workspace |
-| `fill.mode` | Ano | `manual` / `on-demand` / `scheduled` |
-| `fill.src` | Ne | URL pro automatické načtení obsahu |
-| `fill.schedule` | Ne | Cron výraz pro plánované obnovení |
+| Field | Required | Description |
+|-------|----------|-------------|
+| `slot` | Yes | `true` — marks the part as a slot awaiting filling |
+| `assigned_to.key_hint` | No | SHA256 fingerprint of the key of the recipient responsible for filling |
+| `workspace_hint` | No | Recommended filename for linking to the workspace |
+| `fill.mode` | Yes | `manual` / `on-demand` / `scheduled` |
+| `fill.src` | No | URL for automatic content loading |
+| `fill.schedule` | No | Cron expression for scheduled renewal |
 
-### Stav slotu
+### Slot state
 
-Každý slot v `manifest.parts` může mít stav:
+Each slot in `manifest.parts` can have a state:
 
-| Stav | Popis |
-|------|-------|
-| `empty` | Slot definován, nevyplněn (výchozí) |
-| `filled` | Část vyplněna, dostupná v `parts[]` |
-| `linked` | Propojeno s workspace nebo URL, čeká na pull |
-| `stale` | `hash_at_fill` neodpovídá aktuálnímu obsahu `fill.src` |
+| State | Description |
+|-------|-------------|
+| `empty` | Slot defined, not yet filled (default) |
+| `filled` | Part filled, available in `parts[]` |
+| `linked` | Linked to a workspace or URL, awaiting pull |
+| `stale` | `hash_at_fill` does not match the current content of `fill.src` |
 
 ```json
 {
@@ -434,7 +434,7 @@ Každý slot v `manifest.parts` může mít stav:
 
 ### Workspace link (`workspace://`)
 
-Příjemce může propojit slot s lokálním souborem ve svém workspace:
+The recipient can link a slot to a local file in their workspace:
 
 ```json
 "fill": {
@@ -443,11 +443,11 @@ Příjemce může propojit slot s lokálním souborem ve svém workspace:
 }
 ```
 
-`workspace://` schéma resolvuje nástroj (VS Code extension, CLI) na skutečnou cestu v otevřeném projektu. Při fill operaci:
-1. Přečte aktuální obsah souboru
-2. Spočítá hash
-3. Vloží do `parts[]` jako běžnou část
-4. Aktualizuje `slot_state` na `filled` + `filled_at` timestamp
+The `workspace://` scheme is resolved by the tool (VS Code extension, CLI) to the actual path in the open project. During a fill operation:
+1. Reads the current file contents
+2. Computes the hash
+3. Inserts into `parts[]` as a regular part
+4. Updates `slot_state` to `filled` + `filled_at` timestamp
 
 ### Fill API — server endpoint
 
@@ -471,55 +471,55 @@ Authorization: Bearer <api_key>
   }
 ```
 
-Server přidá část do `parts[]`, aktualizuje `manifest.parts[].slot_state` a vygeneruje novou verzi HTML.
+The server adds the part to `parts[]`, updates `manifest.parts[].slot_state`, and generates a new version of the HTML.
 
-### Životní cyklus kolaborativní obálky
+### Lifecycle of a collaborative envelope
 
 ```
-Odesílatel (architekt):
-  → vytvoří obálku se sloty
-  → vyplní své části (embedded)
-  → sloty přiřadí příjemcům (key_hint)
-  → pošle e-mailem nebo nahraje na sdílené URL
+Sender (architect):
+  → creates the envelope with slots
+  → fills their own parts (embedded)
+  → assigns slots to recipients (key_hint)
+  → sends by email or uploads to a shared URL
 
-Příjemce (ops team):
-  → otevře v prohlížeči nebo VS Code
-  → vidí: "VAŠE ČÁSTI K VYPLNĚNÍ"
-  → propojí workspace:// nebo zadá data ručně
-  → klikne [Naplnit] → část se vloží do obálky
-  → volitelně podepíše svůj příspěvek
+Recipient (ops team):
+  → opens in browser or VS Code
+  → sees: "YOUR PARTS TO FILL"
+  → links workspace:// or enters data manually
+  → clicks [Fill] → part is inserted into the envelope
+  → optionally signs their contribution
 
 CI pipeline:
-  → POST /envelope/{id}/fill po každém buildu
-  → slot test-results se aktualizuje automaticky
+  → POST /envelope/{id}/fill after every build
+  → test-results slot is updated automatically
 
-Sdílená URL:
-  → kdokoli otevře → vidí aktuální stav všech částí
-  → scheduled sloty se obnovují dle cron plánu
-  → každý vidí jen části ke kterým má klíč
+Shared URL:
+  → anyone opens it → sees current state of all parts
+  → scheduled slots are renewed according to cron schedule
+  → each person sees only the parts for which they have a key
 ```
 
-### Příklady použití
+### Usage examples
 
-**Deployment balík:**
+**Deployment package:**
 ```
-Architekt:  INSTALL.md (embedded) + agent-config.json (embedded)
+Architect:  INSTALL.md (embedded) + agent-config.json (embedded)
 Ops team:   docker-compose.yml (slot → workspace://) + .env.prod (slot → encrypted)
-CI:         test-results.json (slot → scheduled, každý build)
+CI:         test-results.json (slot → scheduled, every build)
 ```
 
 **Due diligence (M&A):**
 ```
-Prodávající: financial-model.xlsx (embedded, encrypted) + info-memo.pdf (embedded)
-Kupující:    nda-signed.pdf (slot → manual fill) + term-sheet.docx (slot → manual fill)
-Právník:     review-notes.md (slot → on-demand, workspace://)
+Seller:   financial-model.xlsx (embedded, encrypted) + info-memo.pdf (embedded)
+Buyer:    nda-signed.pdf (slot → manual fill) + term-sheet.docx (slot → manual fill)
+Lawyer:   review-notes.md (slot → on-demand, workspace://)
 ```
 
-**Předání projektu:**
+**Project handover:**
 ```
 Lovable/Cursor: frontend.zip (embedded) + schema.sql (embedded)
-Nový tým:       env-vars.json (slot → fill dle svého prostředí)
-Zákazník:       branding.zip (slot → fill jejich assety)
+New team:       env-vars.json (slot → fill according to their environment)
+Customer:       branding.zip (slot → fill with their assets)
 ```
 
 ---
@@ -577,7 +577,7 @@ Implementations MAY support short URI schemes as aliases for well-known provider
 
 ```
 katastr://parcela/{parcel_id}         → CZ: ČÚZK land registry (PDF extract)
-ares://ico/{ico}                      → CZ: ARES company registry (JSON/PDF)
+ ares://ico/{ico}                      → CZ: ARES company registry (JSON/PDF)
 cob://company/{jurisdiction}/{id}     → Companies House (UK), KVK (NL), Handelsregister (DE), etc.
 lei://entity/{lei_code}               → Global LEI (Legal Entity Identifier) — GLEIF
 vat://eu/{country}/{vat_number}       → EU VAT registry (VIES)

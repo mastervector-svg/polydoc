@@ -1,76 +1,76 @@
-# PolyDoc — Specifikace formátu v1.0
+# PolyDoc — Format Specification v1.0
 
-> **Motto:** Jeden soubor. Strojová data. Lidsky čitelný dokument. Funguje v prohlížeči i mailu.
+> **Motto:** One file. Machine-readable data. Human-readable document. Works in the browser and in email.
 
 ---
 
-## 1. Co je PolyDoc?
+## 1. What is PolyDoc?
 
-PolyDoc je otevřený dokumentový formát postavený na standardním HTML souboru.
-Uvnitř nese strukturovaná JSON data (obsah, metadata, logiku) a JavaScript interpreter,
-který z těchto dat v prohlížeči vyrendruje dokument.
+PolyDoc is an open document format built on a standard HTML file.
+It carries structured JSON data (content, metadata, logic) and a JavaScript interpreter
+that renders the document from this data in the browser.
 
-**Soubor má jedinou příponu: `.html`**
-Značka/brand formátu je **Poly** (`format: "poly/1.0"` v JSON hlavičce).
+**The file has a single extension: `.html`**
+The format brand is **Poly** (`format: "poly/1.0"` in the JSON header).
 
-### Proč ne PDF, DOCX nebo čistý JSON?
+### Why not PDF, DOCX, or plain JSON?
 
-| Formát | Problém |
+| Format | Problem |
 |--------|---------|
-| PDF | Statický, strojově nečitelný, drahé generování |
-| DOCX | Binární XML balast, proprietární závislosti |
-| Čistý JSON | Nelze otevřít přímo, potřebuje viewer |
-| **PolyDoc** | ✅ Jedno HTML, funguje všude, data uvnitř, AI-čitelný |
+| PDF | Static, machine-unreadable, expensive to generate |
+| DOCX | Binary XML bloat, proprietary dependencies |
+| Plain JSON | Cannot be opened directly, requires a viewer |
+| **PolyDoc** | ✅ One HTML file, works everywhere, data inside, AI-readable |
 
-### AI-friendly výhoda
+### AI-friendly advantage
 
-LLM nebo RPA bot si přečte JSON přímo ze source dokumentu — žádný parsing PDF,
-žádné OCR. Zákazníkův účetní systém stáhne fakturu automaticky.
+An LLM or RPA bot can read the JSON directly from the document source — no PDF parsing,
+no OCR. A customer's accounting system can download the invoice automatically.
 
 ---
 
-## 2. Dva módy dokumentu
+## 2. Two document modes
 
 ```
 [IS / backend]
-      ↓ generuje ze stejných JSON dat
-      ├── polydoc-mail.html    Statické HTML, nulový JS, do těla mailu
-      │                        < 50 KB, projde každou zdí
-      │                        CTA tlačítko → odkaz na full verzi
+      ↓ generates from the same JSON data
+      ├── polydoc-mail.html    Static HTML, zero JS, into the email body
+      │                        < 50 KB, passes through any wall
+      │                        CTA button → link to full version
       │
-      └── polydoc-full.html    Plný interpreter, živý stav z API
-                               Interaktivní tlačítka, podpis, tisk
-                               Hostováno na serveru nebo ke stažení
+      └── polydoc-full.html    Full interpreter, live status from API
+                               Interactive buttons, signature, print
+                               Hosted on server or available for download
 ```
 
 ---
 
-## 3. Architektura souboru
+## 3. File architecture
 
 ```
-dokument.html
+document.html
 │
 ├── <script type="application/poly+json" id="raw-data">
-│     └── JSON dokument (data, metadata, logika, vizuály)
+│     └── JSON document (data, metadata, logic, visuals)
 │
-├── <script>  ← Poly Interpreter (inline nebo z CDN v budoucnu)
-│     └── Načte JSON → validuje → renderuje → spustí logiku
+├── <script>  ← Poly Interpreter (inline or from CDN in the future)
+│     └── Loads JSON → validates → renders → runs logic
 │
 └── <style>
-      └── CSS (tisk, responzivita, témata)
+      └── CSS (print, responsiveness, themes)
 ```
 
-### Pravidla struktury
+### Structure rules
 
-1. JSON **musí** být v tagu `<script type="application/poly+json" id="raw-data">`
-2. Prohlížeč tag ignoruje (nespustí), JS ho přečte jako text
-3. Full verze: interpreter inline v souboru
-4. Mail verze: žádný JS, staticky vyrendrovaný obsah
-5. Soubor musí být validní HTML5
+1. JSON **must** be in the tag `<script type="application/poly+json" id="raw-data">`
+2. The browser ignores the tag (does not execute it), JS reads it as text
+3. Full version: interpreter inline in the file
+4. Mail version: no JS, statically rendered content
+5. The file must be valid HTML5
 
 ---
 
-## 4. JSON schéma (Poly v1.0)
+## 4. JSON schema (Poly v1.0)
 
 ```json
 {
@@ -89,10 +89,10 @@ dokument.html
   },
 
   "metadata": {
-    "title": "Faktura za konzultace",
+    "title": "Invoice for consulting services",
     "language": "cs",
     "author": "Jan Novák",
-    "tags": ["faktura", "2026"],
+    "tags": ["invoice", "2026"],
     "custom_fields": {
       "vs": "123456",
       "ks": "0308",
@@ -128,20 +128,20 @@ dokument.html
       {
         "field": "is_paid",
         "value": true,
-        "banner": { "text": "✅ ZAPLACENO", "style": "success" }
+        "banner": { "text": "✅ PAID", "style": "success" }
       },
       {
         "field": "is_paid",
         "value": false,
-        "banner": { "text": "⏳ Čeká na platbu", "style": "warning" }
+        "banner": { "text": "⏳ Awaiting payment", "style": "warning" }
       }
     ],
     "actions": [
       {
-        "label": "✅ Potvrdit objednávku",
+        "label": "✅ Confirm order",
         "api_url": "https://api.example.cz/doc/INV-2026-001/confirm",
         "method": "POST",
-        "success_message": "Děkujeme za potvrzení!"
+        "success_message": "Thank you for confirming!"
       }
     ]
   }
@@ -150,33 +150,33 @@ dokument.html
 
 ---
 
-## 5. Typy sekcí (`content.sections[].type`)
+## 5. Section types (`content.sections[].type`)
 
-| Typ | Popis | Povinná pole |
-|-----|-------|-------------|
-| `header` | Záhlaví dokumentu | `elements[]` |
-| `party` | Účastník dokumentu | `role`, `data` |
-| `table` | Tabulka s volitelným footrem | `columns[]`, `rows[]` |
-| `image` | Obrázek | `src`, `alt` |
-| `rich_text` | HTML blok (sanitizovat!) | `html` |
-| `checklist` | Seznam s checkboxy | `items[]` |
-| `paragraph` | Textový odstavec | `text` |
-| `divider` | Horizontální oddělovač | — |
-| `signature_block` | Pole pro podpis | `label` |
-| `custom` | Libovolný blok | `data` |
+| Type | Description | Required fields |
+|------|-------------|-----------------|
+| `header` | Document header | `elements[]` |
+| `party` | Document participant | `role`, `data` |
+| `table` | Table with optional footer | `columns[]`, `rows[]` |
+| `image` | Image | `src`, `alt` |
+| `rich_text` | HTML block (must be sanitized!) | `html` |
+| `checklist` | List with checkboxes | `items[]` |
+| `paragraph` | Text paragraph | `text` |
+| `divider` | Horizontal separator | — |
+| `signature_block` | Signature field | `label` |
+| `custom` | Arbitrary block | `data` |
 
-### Sekce: `header`
+### Section: `header`
 ```json
 {
   "type": "header",
   "elements": [
-    { "type": "heading", "level": 1, "text": "Faktura" },
-    { "type": "paragraph", "text": "Vystaveno: 12. 3. 2026" }
+    { "type": "heading", "level": 1, "text": "Invoice" },
+    { "type": "paragraph", "text": "Issued: 12 March 2026" }
   ]
 }
 ```
 
-### Sekce: `party`
+### Section: `party`
 ```json
 {
   "type": "party",
@@ -192,14 +192,14 @@ dokument.html
 ```
 Role: `supplier` | `client` | `guarantor` | `agent`
 
-### Sekce: `table`
+### Section: `table`
 ```json
 {
   "type": "table",
   "id": "items",
-  "columns": ["Popis", "Množství", "Jedn. cena", "Celkem"],
+  "columns": ["Description", "Quantity", "Unit price", "Total"],
   "rows": [
-    ["Konzultace", 5, 2000, 10000]
+    ["Consulting", 5, 2000, 10000]
   ],
   "footer": {
     "total": 10000,
@@ -209,63 +209,63 @@ Role: `supplier` | `client` | `guarantor` | `agent`
 }
 ```
 
-### Sekce: `image`
+### Section: `image`
 ```json
 {
   "type": "image",
   "src": "data:image/png;base64,...",
-  "alt": "Logo firmy",
+  "alt": "Company logo",
   "width": "200px",
-  "caption": "Popisek"
+  "caption": "Caption"
 }
 ```
-`src` může být base64 (< 50 KB doporučeno) nebo HTTPS URL.
+`src` can be base64 (< 50 KB recommended) or an HTTPS URL.
 
-### Sekce: `checklist`
+### Section: `checklist`
 ```json
 {
   "type": "checklist",
   "items": [
-    { "text": "Podepsáno", "checked": true },
-    { "text": "Zaplaceno", "checked": false }
+    { "text": "Signed", "checked": true },
+    { "text": "Paid", "checked": false }
   ]
 }
 ```
 
 ---
 
-## 6. Bezpečnost
+## 6. Security
 
-### XSS prevence
-- `rich_text.html` **musí** být sanitizován (DOMPurify client-side nebo server-side)
-- Nikdy nevkládat raw HTML z nevalidovaného vstupu
-- `image.src` — nikdy nepovolovat `javascript:` nebo `data:text/html` schéma
+### XSS prevention
+- `rich_text.html` **must** be sanitized (DOMPurify client-side or server-side)
+- Never inject raw HTML from unvalidated input
+- `image.src` — never allow `javascript:` or `data:text/html` schemes
 
-### Integrita dokumentu
-- `header.signature` obsahuje ES256 podpis celého JSON objektu (bez pole `signature`)
-- Ověření přes WebCrypto API (SubtleCrypto) v prohlížeči
-- Doporučeno pro: faktury, smlouvy, úřední dokumenty
+### Document integrity
+- `header.signature` contains an ES256 signature of the entire JSON object (excluding the `signature` field)
+- Verification via WebCrypto API (SubtleCrypto) in the browser
+- Recommended for: invoices, contracts, official documents
 
-### Obrázky
-- Base64 inline — vhodné pro loga < 50 KB
-- URL reference — pro větší obrázky, musí být HTTPS
-
----
-
-## 7. Vizuální témata (`visuals.theme`)
-
-| Hodnota | Popis |
-|---------|-------|
-| `modern-clean` | Bílé pozadí, modrý accent, čistá typografie |
-| `modern-dark` | Tmavé pozadí, neonové akcenty |
-| `classic` | Serif fonty, konzervativní layout |
-| `minimal` | Maximální bílý prostor, minimální barvy |
-
-Barvy lze přepsat přes `visuals.colors.primary` a `visuals.colors.accent`.
+### Images
+- Base64 inline — suitable for logos < 50 KB
+- URL references — for larger images, must be HTTPS
 
 ---
 
-## 8. Logic sekce
+## 7. Visual themes (`visuals.theme`)
+
+| Value | Description |
+|-------|-------------|
+| `modern-clean` | White background, blue accent, clean typography |
+| `modern-dark` | Dark background, neon accents |
+| `classic` | Serif fonts, conservative layout |
+| `minimal` | Maximum white space, minimal colours |
+
+Colours can be overridden via `visuals.colors.primary` and `visuals.colors.accent`.
+
+---
+
+## 8. Logic section
 
 ### `logic.dynamic` — live fetch
 ```json
@@ -276,70 +276,70 @@ Barvy lze přepsat přes `visuals.colors.primary` a `visuals.colors.accent`.
   "target_field": "is_paid"
 }
 ```
-Interpreter nahradí `{doc_id}` hodnotou z `header.doc_id`.
+The interpreter replaces `{doc_id}` with the value from `header.doc_id`.
 
-### `logic.conditions` — podmíněné bannery
+### `logic.conditions` — conditional banners
 ```json
 {
   "field": "is_paid",
   "value": true,
-  "banner": { "text": "✅ ZAPLACENO", "style": "success" }
+  "banner": { "text": "✅ PAID", "style": "success" }
 }
 ```
-Styly banneru: `success` | `warning` | `danger` | `info`
+Banner styles: `success` | `warning` | `danger` | `info`
 
-### `logic.actions` — akční tlačítka
+### `logic.actions` — action buttons
 ```json
 {
-  "label": "✅ Potvrdit objednávku",
+  "label": "✅ Confirm order",
   "api_url": "https://api.example.cz/doc/{doc_id}/confirm",
   "method": "POST",
-  "success_message": "Děkujeme!"
+  "success_message": "Thank you!"
 }
 ```
 
 ---
 
-## 9. Interpreter — veřejné API
+## 9. Interpreter — public API
 
 ```javascript
-PolyDoc.init()            // inicializace (automaticky na DOMContentLoaded)
-PolyDoc.render()          // znovu vyrendrovat dokument
-PolyDoc.verify()          // ověřit digitální podpis
-PolyDoc.exportJSON()      // stáhnout čistý JSON
-PolyDoc.getDoc()          // vrátí parsed JSON objekt (pro integraci)
+PolyDoc.init()            // initialise (automatically on DOMContentLoaded)
+PolyDoc.render()          // re-render the document
+PolyDoc.verify()          // verify digital signature
+PolyDoc.exportJSON()      // download clean JSON
+PolyDoc.getDoc()          // return parsed JSON object (for integration)
 ```
 
 ---
 
-## 10. Mail verze — pravidla
+## 10. Mail version — rules
 
-Mail verze je staticky vyrendrovaná kopie bez JS.
+The mail version is a statically rendered copy without JS.
 
-**Musí:**
-- Být validní HTML email (tabulkový layout pro Outlook kompatibilitu)
-- Obsahovat CTA tlačítko s odkazem na full verzi
-- Mít inline CSS (žádné `<style>` bloky — Gmail je stripuje)
-- Zobrazit klíčové informace bez JS (číslo, částka, splatnost, strany)
-- Obsahovat `<script type="application/poly+json">` s daty (pro AI parsery)
+**Must:**
+- Be a valid HTML email (table layout for Outlook compatibility)
+- Include a CTA button with a link to the full version
+- Have inline CSS (no `<style>` blocks — Gmail strips them)
+- Display key information without JS (number, amount, due date, parties)
+- Include `<script type="application/poly+json">` with data (for AI parsers)
 
-**Nesmí:**
-- Obsahovat žádný `<script>` s kódem
-- Používat externí CSS soubory
-- Spoléhat na webfonty (fallback na system fonts)
+**Must not:**
+- Contain any `<script>` with code
+- Use external CSS files
+- Rely on web fonts (fall back to system fonts)
 
 ---
 
-## 11. Komprese — selektivní DEFLATE na úrovni sekce
+## 11. Compression — selective DEFLATE at section level
 
-Komprese v PolyDocu je **per-sekce vlastnost**, ne globální mód dokumentu.
-Hlavička, metadata, souhrny a malé bloky zůstávají čitelné jako JSON.
-Velké bloky (obrázky v base64, knowledge base, přílohy, velké tabulky) se komprimují inline.
+Compression in PolyDoc is a **per-section property**, not a global document mode.
+The header, metadata, summaries, and small blocks remain readable as JSON.
+Large blocks (base64 images, knowledge bases, attachments, large tables) are compressed inline.
 
-Kouzlo je v tom, že dokument zůstává inspektovatelný pouhým pohledem — vidíš hlavičku,
-strany, částky — ale velká data jsou úsporně uložena vedle nich ve stejném souboru.
+The magic is that the document remains inspectable at a glance — you can see the header,
+parties, and amounts — while large data is stored compactly alongside them in the same file.
 
-### Globální nastavení v hlavičce (hint pro generátory)
+### Global setting in the header (hint for generators)
 
 ```json
 {
@@ -354,16 +354,16 @@ strany, částky — ale velká data jsou úsporně uložena vedle nich ve stejn
 }
 ```
 
-`threshold` říká generátoru: *"pole, jejichž serializovaná velikost překročí tento počet bajtů, zkomprimuj automaticky"*. Výchozí hodnota je **10 240 B (10 KB)**. Hlavička a malé sekce se nikdy nekomprimují.
+`threshold` tells the generator: *"fields whose serialised size exceeds this number of bytes should be compressed automatically"*. The default value is **10 240 B (10 KB)**. The header and small sections are never compressed.
 
-### Jak vypadá komprimovaná sekce
+### What a compressed section looks like
 
-Jakákoliv sekce v `content.sections` nebo položka v transfer payloadu může nést komprimovaná data:
+Any section in `content.sections` or an item in a transfer payload can carry compressed data:
 
 ```json
 {
   "type": "image",
-  "alt": "Fotografie nemovitosti",
+  "alt": "Property photograph",
   "compressed": true,
   "data": "eJyNkstqwzAQRff...",
   "original_size": 52480,
@@ -375,7 +375,7 @@ Jakákoliv sekce v `content.sections` nebo položka v transfer payloadu může n
 {
   "type": "knowledge_base",
   "id": "kb-main",
-  "title": "Znalostní báze projektu",
+  "title": "Project knowledge base",
   "compressed": true,
   "data": "eJyVkMtqwzAQRff...",
   "original_size": 145000,
@@ -383,7 +383,7 @@ Jakákoliv sekce v `content.sections` nebo položka v transfer payloadu může n
 }
 ```
 
-Nekomprimovaná sekce přitom vypadá normálně — `compressed` pole chybí nebo je `false`:
+An uncompressed section looks normal — the `compressed` field is absent or `false`:
 
 ```json
 {
@@ -393,28 +393,28 @@ Nekomprimovaná sekce přitom vypadá normálně — `compressed` pole chybí ne
 }
 ```
 
-### Pravidla
+### Rules
 
-| Pravidlo | Hodnota |
-|----------|---------|
-| Algoritmus | DEFLATE (RFC 1951) |
-| Kódování | Base64 |
-| Výchozí threshold | 10 240 B |
-| Příznak | `"compressed": true` na sekci/položce |
-| Obsah | `"data": base64(deflate(JSON.stringify(original_data)))` |
-| Metadata | `"original_size"`, `"compressed_size"` (volitelné, pro debugování) |
-| Co se nikdy nekomprimuje | `header`, `metadata`, souhrny, `footer` tabulky |
+| Rule | Value |
+|------|-------|
+| Algorithm | DEFLATE (RFC 1951) |
+| Encoding | Base64 |
+| Default threshold | 10 240 B |
+| Flag | `"compressed": true` on the section/item |
+| Content | `"data": base64(deflate(JSON.stringify(original_data)))` |
+| Metadata | `"original_size"`, `"compressed_size"` (optional, for debugging) |
+| Never compressed | `header`, `metadata`, summaries, table `footer` |
 
 Decompress (Node.js): `JSON.parse(inflateSync(Buffer.from(data, 'base64')).toString('utf-8'))`
 Decompress (browser): `DecompressionStream('deflate')` + `TextDecoder`
 
 ---
 
-## 12. Šifrování (`header.encryption`)
+## 12. Encryption (`header.encryption`)
 
-PolyDoc podporuje fragment-key šifrování pro citlivé dokumenty. Klíč je součástí URL fragmentu (`#`) — ten se nikdy neposílá na server.
+PolyDoc supports fragment-key encryption for sensitive documents. The key is part of the URL fragment (`#`) — it is never sent to the server.
 
-### Formát v hlavičce
+### Header format
 
 ```json
 {
@@ -431,36 +431,36 @@ PolyDoc podporuje fragment-key šifrování pro citlivé dokumenty. Klíč je so
 }
 ```
 
-### Jak to funguje
+### How it works
 
 ```
-Server vygeneruje AES-256-GCM klíč
+Server generates an AES-256-GCM key
   ↓
-Zašifruje obsah dokumentu (content, logic, metadata)
+Encrypts document content (content, logic, metadata)
   ↓
-Uloží zašifrovaný dokument na server
+Stores the encrypted document on the server
   ↓
-Vrátí URL: https://example.cz/doc/CONTRACT-001.html#key=<base64-key>
+Returns URL: https://example.cz/doc/CONTRACT-001.html#key=<base64-key>
   ↓
-Prohlížeč přečte klíč z fragmentu (fragment se NIKDY neposílá na server)
+Browser reads the key from the fragment (the fragment is NEVER sent to the server)
   ↓
-WebCrypto API (SubtleCrypto) dešifruje obsah přímo v prohlížeči
+WebCrypto API (SubtleCrypto) decrypts the content directly in the browser
 ```
 
 ### Access modes
 
-| Mode | Popis |
-|------|-------|
-| `public` | Bez omezení — výchozí |
-| `token` | Vyžaduje Bearer token pro načtení full verze |
-| `encrypted` | AES-256-GCM, klíč v URL fragmentu |
+| Mode | Description |
+|------|-------------|
+| `public` | No restrictions — default |
+| `token` | Requires a Bearer token to load the full version |
+| `encrypted` | AES-256-GCM, key in URL fragment |
 
 ```json
 {
   "header": {
     "access": {
       "mode": "encrypted",
-      "hint": "Odkaz s klíčem obdržíte e-mailem"
+      "hint": "You will receive the link with the key by email"
     }
   }
 }
@@ -468,31 +468,31 @@ WebCrypto API (SubtleCrypto) dešifruje obsah přímo v prohlížeči
 
 ---
 
-## 13. Lazy load — selektivní načítání sekcí
+## 13. Lazy load — selective section loading
 
-Lazy load je stejně jako komprese **per-sekce vlastnost**, nezávislá na formátu výstupu.
-Sekce s `"lazy": true` se při prvním renderu nevykreslí — místo nich se zobrazí placeholder.
-Obsah se načte až na vyžádání (scroll do view nebo klik).
+Lazy load is, like compression, a **per-section property**, independent of the output format.
+Sections with `"lazy": true` are not rendered on the first pass — a placeholder is shown instead.
+Content is loaded on demand (scroll into view or click).
 
-### Dva módy lazy load
+### Two lazy load modes
 
-#### `"lazy_mode": "on-demand"` (výchozí)
-Data se **vždy táhnou ze `src`** při každém vyžádání. Nikdy se nevkládají do dokumentu.
-Vhodné pro: živý stav, smluvní podmínky (vždy aktuální verze), externí datasety.
+#### `"lazy_mode": "on-demand"` (default)
+Data is **always fetched from `src`** on every request. It is never embedded in the document.
+Suitable for: live status, terms and conditions (always the latest version), external datasets.
 
 ```json
 {
   "type": "rich_text",
   "lazy": true,
   "lazy_mode": "on-demand",
-  "lazy_label": "Zobrazit smluvní podmínky...",
+  "lazy_label": "Show terms and conditions...",
   "src": "https://api.example.cz/terms/v2"
 }
 ```
 
 #### `"lazy_mode": "inline"`
-Data se **dotáhnou jednou** a vloží přímo do DOM (a mohou být uložena zpět do dokumentu).
-Vhodné pro: velké obrázky, knowledge base, přílohy — obsah se chce mít offline.
+Data is **fetched once** and inserted directly into the DOM (and can be saved back into the document).
+Suitable for: large images, knowledge bases, attachments — content that should be available offline.
 
 ```json
 {
@@ -500,16 +500,16 @@ Vhodné pro: velké obrázky, knowledge base, přílohy — obsah se chce mít o
   "lazy": true,
   "lazy_mode": "inline",
   "src": "https://cdn.example.cz/foto-hd.jpg",
-  "alt": "Fotografie nemovitosti — HD verze",
+  "alt": "Property photograph — HD version",
   "width": "100%"
 }
 ```
 
-Přepnutí módu = jeden parametr. Chování se změní, `src` zůstane stejný.
+Switching mode = one parameter. Behaviour changes, `src` stays the same.
 
-### Threshold pro automatický lazy load
+### Threshold for automatic lazy load
 
-V hlavičce lze definovat práh — sekce nad touto velikostí dostane `lazy: true` automaticky:
+A threshold can be defined in the header — sections above this size will get `lazy: true` automatically:
 
 ```json
 {
@@ -522,19 +522,19 @@ V hlavičce lze definovat práh — sekce nad touto velikostí dostane `lazy: tr
 }
 ```
 
-Výchozí threshold: **50 KB** (pro sekce bez explicitního `lazy` pole).
-Generátor přidá `lazy: true` a `lazy_mode` podle `default_mode` automaticky při tvorbě dokumentu.
+Default threshold: **50 KB** (for sections without an explicit `lazy` field).
+The generator adds `lazy: true` and `lazy_mode` according to `default_mode` automatically when creating the document.
 
-### Kombinace s kompresí
+### Combining with compression
 
-Lazy a komprese jsou na sobě nezávislé a lze je kombinovat:
+Lazy and compression are independent of each other and can be combined:
 
 ```json
 {
   "type": "knowledge_base",
   "lazy": true,
   "lazy_mode": "inline",
-  "lazy_label": "Načíst znalostní bázi...",
+  "lazy_label": "Load knowledge base...",
   "src": "https://api.example.cz/kb/main",
   "compressed": true,
   "data": "eJyVkMtq...",
@@ -543,71 +543,71 @@ Lazy a komprese jsou na sobě nezávislé a lze je kombinovat:
 }
 ```
 
-Interpret nejdříve zdecomprimuje `data`, pak zobrazí obsah. `src` slouží jako fallback pokud `data` chybí.
+The interpreter first decompresses `data`, then displays the content. `src` serves as a fallback if `data` is missing.
 
-### Pravidla
+### Rules
 
-| Vlastnost | Popis | Výchozí |
-|-----------|-------|---------|
-| `lazy` | Aktivuje lazy load pro sekci | `false` |
-| `lazy_mode` | `"on-demand"` nebo `"inline"` | `"on-demand"` |
-| `lazy_label` | Text placeholderu | `"Načíst..."` |
-| `src` | URL zdroje obsahu | — |
-| `header.lazy.threshold` | Práh pro auto-lazy (bajty) | `51200` (50 KB) |
-| `header.lazy.default_mode` | Výchozí mód pro auto-lazy | `"on-demand"` |
+| Property | Description | Default |
+|----------|-------------|---------|
+| `lazy` | Activates lazy load for the section | `false` |
+| `lazy_mode` | `"on-demand"` or `"inline"` | `"on-demand"` |
+| `lazy_label` | Placeholder text | `"Load..."` |
+| `src` | Content source URL | — |
+| `header.lazy.threshold` | Threshold for auto-lazy (bytes) | `51200` (50 KB) |
+| `header.lazy.default_mode` | Default mode for auto-lazy | `"on-demand"` |
 
-### Chování interpreteru
+### Interpreter behaviour
 
 ```
-Render sekce:
-  lazy: false  → vyrendruje okamžitě z dat v dokumentu
-  lazy: true   → vyrendruje placeholder div, připne IntersectionObserver
+Render section:
+  lazy: false  → renders immediately from data in the document
+  lazy: true   → renders a placeholder div, attaches IntersectionObserver
 
-Trigger (scroll do view nebo klik):
-  lazy_mode: on-demand  → fetch(src) při každém zobrazení, nikdy neukládá
-  lazy_mode: inline     → fetch(src) jednou, nahradí placeholder, data vloží do DOM
-                          volitelně: updateDoc() uloží data zpět do raw-data JSON
+Trigger (scroll into view or click):
+  lazy_mode: on-demand  → fetch(src) on every display, never stores
+  lazy_mode: inline     → fetch(src) once, replaces placeholder, inserts data into DOM
+                          optional: updateDoc() saves data back into raw-data JSON
 ```
 
-**Mail verze:** `lazy: true` sekce se renderují jako statický placeholder text (`lazy_label`)
-s odkazem na full verzi. JS není k dispozici — full verze obstará samotné načtení.
+**Mail version:** `lazy: true` sections are rendered as static placeholder text (`lazy_label`)
+with a link to the full version. JS is not available — the full version handles loading itself.
 
 ---
 
-## 14. Roadmapa
+## 14. Roadmap
 
-### v1.0 (aktuální)
-- [x] JSON schéma (header, metadata, content, visuals, logic)
-- [x] Typy sekcí: header, party, table, image, rich_text, checklist, paragraph, divider
+### v1.0 (current)
+- [x] JSON schema (header, metadata, content, visuals, logic)
+- [x] Section types: header, party, table, image, rich_text, checklist, paragraph, divider
 - [x] Full interpreter (inline, single-file)
-- [x] Mail šablona (statická, bez JS)
-- [x] Podmíněné bannery
-- [x] Export JSON
+- [x] Mail template (static, no JS)
+- [x] Conditional banners
+- [x] JSON export
 
 ### v1.1
-- [ ] Sdílený interpreter na CDN (`poly-interpreter.js`)
-- [ ] SubtleCrypto ověření podpisu
-- [ ] Více vizuálních témat
-- [ ] DOMPurify integrace pro rich_text
-- [ ] Envelope formát (`doc_type: "envelope"`) — kryptografická obálka pro libovolný obsah
+- [ ] Shared interpreter on CDN (`poly-interpreter.js`)
+- [ ] SubtleCrypto signature verification
+- [ ] More visual themes
+- [ ] DOMPurify integration for rich_text
+- [ ] Envelope format (`doc_type: "envelope"`) — cryptographic wrapper for arbitrary content
 
 ### v2.0
-- [ ] Spec na GitHubu (`github.com/polydoc/spec`)
-- [ ] JSON Schema validátor
-- [ ] WYSIWYG editor v IS
+- [ ] Spec on GitHub (`github.com/polydoc/spec`)
+- [ ] JSON Schema validator
+- [ ] WYSIWYG editor in IS
 - [ ] Offline-first (Service Worker)
 
 ---
 
-## 16. Envelope formát (`doc_type: "envelope"`)
+## 16. Envelope format (`doc_type: "envelope"`)
 
-Pro přenos více souborů, kryptografické zásilky a multi-recipient scénáře slouží Envelope formát. Obálka neobsahuje vizuální sekce — místo nich nese `parts[]` s libovolným obsahem. Hlavička a manifest jsou vždy čitelné; obsah je volitelně šifrovaný, komprimovaný nebo lazy-načítaný. Podpis pokrývá manifest (hash každé části), nikoli obsah samotný — příjemce může potvrdit příjem zásilky bez otevření jediné části.
+The Envelope format is used for transferring multiple files, cryptographic dispatches, and multi-recipient scenarios. An envelope contains no visual sections — instead it carries `parts[]` with arbitrary content. The header and manifest are always readable; content is optionally encrypted, compressed, or lazy-loaded. The signature covers the manifest (a hash of each part), not the content itself — the recipient can confirm receipt of the dispatch without opening a single part.
 
-Viz [POLYDOC_ENVELOPE.md](POLYDOC_ENVELOPE.md) pro kompletní specifikaci.
+See [POLYDOC_ENVELOPE.md](POLYDOC_ENVELOPE.md) for the complete specification.
 
 ---
 
-## 15. GitHub & odkaz ve spec
+## 15. GitHub & spec reference
 
 ```json
 {
@@ -618,7 +618,7 @@ Viz [POLYDOC_ENVELOPE.md](POLYDOC_ENVELOPE.md) pro kompletní specifikaci.
 }
 ```
 
-Odkaz na spec je součástí každého dokumentu — samodokumentující formát.
+The spec link is part of every document — a self-documenting format.
 
 ---
 

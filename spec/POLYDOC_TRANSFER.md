@@ -1,30 +1,30 @@
-# PolyDoc Transfer Format — Specifikace v1.0
+# PolyDoc Transfer Format — Specification v1.0
 
-> Univerzální přenosový formát pro AI projekty, konfiguraci agentů,
-> frontendové a backendové struktury, nastavení konektorů a znalostní báze.
-> Podepsaný, verzovaný, volitelně komprimovaný. Stále jen `.html` soubor.
-
----
-
-## 1. Co je PolyDoc Transfer?
-
-Rozšíření PolyDoc formátu o typ `transfer` — přenosový kontejner pro strukturovaná
-projektová data. Navržen pro:
-
-- Přenos projektů mezi nástroji (Lovable → Cursor → interní IS)
-- Backup a archivaci AI projektů ve čitelném formátu
-- Sdílení konfigurace agentů a jejich znalostí
-- Verzovaný snapshot celého projektu nebo jeho části
-- Distribuci šablon, konektorů a workflows
-
-**Klíčová vlastnost:** Soubor je stále validní HTML.
-Otevřeš v prohlížeči → vidíš co uvnitř je, jaké verze, co je komprimované.
-Předáš agentovi → přečte JSON přímo ze source.
-Importuješ do IS → jeden regex, hotovo.
+> Universal transfer format for AI projects, agent configuration,
+> frontend and backend structures, connector settings, and knowledge bases.
+> Signed, versioned, optionally compressed. Still just an `.html` file.
 
 ---
 
-## 2. Hlavička transfer dokumentu
+## 1. What is PolyDoc Transfer?
+
+An extension of the PolyDoc format with a `transfer` type — a transfer container for structured
+project data. Designed for:
+
+- Moving projects between tools (Lovable → Cursor → internal IS)
+- Backup and archiving AI projects in a human-readable format
+- Sharing agent configuration and their knowledge
+- Versioned snapshots of an entire project or parts of it
+- Distribution of templates, connectors, and workflows
+
+**Key property:** The file is still valid HTML.
+Open it in a browser → see what's inside, which versions, what is compressed.
+Pass it to an agent → it reads the JSON directly from source.
+Import into IS → one regex, done.
+
+---
+
+## 2. Transfer document header
 
 ```json
 {
@@ -36,7 +36,7 @@ Importuješ do IS → jeden regex, hotovo.
 
     "transfer": {
       "purpose": "backup",
-      "label": "Celý projekt RealPortal — sprint 4 snapshot",
+      "label": "Full RealPortal project — sprint 4 snapshot",
       "source": {
         "tool": "lovable",
         "project_id": "proj_abc123",
@@ -45,7 +45,7 @@ Importuješ do IS → jeden regex, hotovo.
       },
       "target": {
         "tool": "cursor",
-        "hint": "Importovat jako nový workspace"
+        "hint": "Import as new workspace"
       },
       "contents": [
         "agent_config",
@@ -69,7 +69,7 @@ Importuješ do IS → jeden regex, hotovo.
       "created_at": "2026-03-12T08:00:00Z",
       "snapshot_id": "snap_20260312_0800",
       "previous_snapshot": "snap_20260305_1430",
-      "changelog": "Přidány konektory Supabase + Resend. Aktualizován agent pro generování nabídek."
+      "changelog": "Added Supabase + Resend connectors. Updated agent for generating offers."
     },
 
     "signature": {
@@ -89,37 +89,37 @@ Importuješ do IS → jeden regex, hotovo.
 }
 ```
 
-### Hodnoty `transfer.purpose`
+### `transfer.purpose` values
 
-| Hodnota | Popis |
-|---------|-------|
-| `backup` | Záložní kopie projektu |
-| `migration` | Přesun mezi nástroji |
-| `distribution` | Šablona k distribuci |
-| `snapshot` | Stavový bod (před deployem, před refaktorem) |
-| `handoff` | Předání jinému týmu / agentovi |
-| `sync` | Synchronizace mezi instancemi IS |
+| Value | Description |
+|-------|-------------|
+| `backup` | Backup copy of the project |
+| `migration` | Moving between tools |
+| `distribution` | Template for distribution |
+| `snapshot` | State checkpoint (before deploy, before refactor) |
+| `handoff` | Handover to another team / agent |
+| `sync` | Synchronization between IS instances |
 
-### Hodnoty `transfer.contents[]`
+### `transfer.contents[]` values
 
-| Hodnota | Popis |
-|---------|-------|
-| `agent_config` | Nastavení AI agentů (instrukce, model, nástroje) |
-| `knowledge_base` | Znalostní báze agenta (FAQ, pravidla, příklady) |
-| `frontend_structure` | Struktura komponent, routing, design systém |
-| `backend_structure` | API endpointy, datové modely, business logika |
-| `connector_config` | Nastavení externích konektorů (Supabase, Stripe…) |
-| `ui_components` | Exportované UI komponenty (JSX/HTML) |
-| `env_schema` | Schéma proměnných prostředí (bez hodnot!) |
-| `workflow_definitions` | Definice automatizací a workflows |
-| `prompt_library` | Knihovna promptů projektu |
-| `test_cases` | Testovací případy a expectations |
+| Value | Description |
+|-------|-------------|
+| `agent_config` | AI agent settings (instructions, model, tools) |
+| `knowledge_base` | Agent knowledge base (FAQ, rules, examples) |
+| `frontend_structure` | Component structure, routing, design system |
+| `backend_structure` | API endpoints, data models, business logic |
+| `connector_config` | External connector settings (Supabase, Stripe…) |
+| `ui_components` | Exported UI components (JSX/HTML) |
+| `env_schema` | Environment variable schema (without values!) |
+| `workflow_definitions` | Automation and workflow definitions |
+| `prompt_library` | Project prompt library |
+| `test_cases` | Test cases and expectations |
 
 ---
 
-## 3. Payload struktura
+## 3. Payload structure
 
-Každý typ obsahu je samostatná sekce v `payload[]`.
+Each content type is a separate section in `payload[]`.
 
 ```json
 {
@@ -128,7 +128,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
     {
       "type": "agent_config",
       "id": "agent_offer_generator",
-      "label": "Agent pro generování nabídek nemovitostí",
+      "label": "Agent for generating real estate offers",
       "version": "1.3.0",
       "compressed": true,
       "data": "BASE64_DEFLATE_ENCODED_STRING"
@@ -137,7 +137,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
     {
       "type": "knowledge_base",
       "id": "kb_realty_rules",
-      "label": "Pravidla a FAQ pro realitní komunikaci",
+      "label": "Rules and FAQ for real estate communication",
       "version": "2.1.0",
       "compressed": false,
       "data": { ... }
@@ -146,7 +146,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
     {
       "type": "frontend_structure",
       "id": "frontend_main",
-      "label": "Hlavní frontend struktura",
+      "label": "Main frontend structure",
       "version": "4.2.1",
       "compressed": true,
       "data": "BASE64_DEFLATE_ENCODED_STRING"
@@ -155,7 +155,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
     {
       "type": "connector_config",
       "id": "connector_supabase",
-      "label": "Supabase konfigurace",
+      "label": "Supabase configuration",
       "version": "1.0.0",
       "compressed": false,
       "sensitive": false,
@@ -165,8 +165,8 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
     {
       "type": "env_schema",
       "id": "env_production",
-      "label": "Schéma produkčních proměnných",
-      "note": "Pouze schéma — hodnoty nejsou součástí exportu!",
+      "label": "Production variable schema",
+      "note": "Schema only — values are not part of the export!",
       "compressed": false,
       "data": { ... }
     }
@@ -177,7 +177,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
 
 ---
 
-## 4. Schéma jednotlivých typů
+## 4. Schema for individual types
 
 ### `agent_config`
 
@@ -185,25 +185,25 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
 {
   "type": "agent_config",
   "id": "agent_offer_generator",
-  "label": "Agent pro generování nabídek nemovitostí",
+  "label": "Agent for generating real estate offers",
   "version": "1.3.0",
   "compressed": false,
   "data": {
     "model": "claude-sonnet-4-5",
     "provider": "anthropic",
-    "system_prompt": "Jsi expert na realitní komunikaci...",
+    "system_prompt": "You are an expert in real estate communication...",
     "temperature": 0.7,
     "max_tokens": 2000,
     "tools": [
       {
         "name": "get_property_details",
-        "description": "Načte detail nemovitosti z IS",
+        "description": "Loads property details from IS",
         "endpoint": "{{IS_BASE_URL}}/api/properties/{id}",
         "auth": "bearer_token"
       },
       {
         "name": "send_polydoc_mail",
-        "description": "Odešle PolyDoc mail klientovi",
+        "description": "Sends a PolyDoc mail to the client",
         "endpoint": "{{IS_BASE_URL}}/api/messages/send",
         "auth": "bearer_token"
       }
@@ -229,7 +229,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
 {
   "type": "knowledge_base",
   "id": "kb_realty_rules",
-  "label": "Pravidla pro realitní komunikaci",
+  "label": "Rules for real estate communication",
   "version": "2.1.0",
   "compressed": false,
   "data": {
@@ -238,33 +238,33 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
     "sections": [
       {
         "id": "tone_rules",
-        "title": "Tón komunikace",
+        "title": "Communication tone",
         "type": "rules",
         "items": [
-          "Vždy oslovovat jménem, nikdy 'vážený zákazníku'",
-          "Ceny uvádět vždy s DPH v CZK",
-          "Nabídky personalizovat — zmínit proč zrovna tato nemovitost"
+          "Always address by name, never 'dear customer'",
+          "Always state prices with VAT in CZK",
+          "Personalize offers — mention why this particular property"
         ]
       },
       {
         "id": "faq",
-        "title": "Časté dotazy",
+        "title": "Frequently asked questions",
         "type": "qa_pairs",
         "items": [
           {
-            "q": "Jak dlouho trvá rezervace?",
-            "a": "Rezervace je platná 14 dní od podpisu rezervační smlouvy."
+            "q": "How long does a reservation last?",
+            "a": "The reservation is valid for 14 days from the signing of the reservation agreement."
           }
         ]
       },
       {
         "id": "examples",
-        "title": "Příklady dobrých nabídek",
+        "title": "Examples of good offers",
         "type": "examples",
         "items": [
           {
-            "label": "Dobrý úvod nabídky",
-            "text": "Na základě vašich požadavků z naší schůzky jsem pro vás vybral/a..."
+            "label": "Good offer opening",
+            "text": "Based on your requirements from our meeting, I have selected for you..."
           }
         ]
       }
@@ -282,7 +282,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
 {
   "type": "frontend_structure",
   "id": "frontend_main",
-  "label": "Hlavní frontend",
+  "label": "Main frontend",
   "version": "4.2.1",
   "framework": "react",
   "compressed": true,
@@ -316,7 +316,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
 {
   "type": "backend_structure",
   "id": "backend_main",
-  "label": "Backend API struktura",
+  "label": "Backend API structure",
   "version": "3.1.0",
   "framework": "node-express",
   "compressed": true,
@@ -328,14 +328,14 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
       {
         "method": "GET",
         "path": "/properties",
-        "description": "Seznam nemovitostí",
+        "description": "List of properties",
         "params": ["page", "limit", "filter"],
         "response": "PropertyList"
       },
       {
         "method": "POST",
         "path": "/messages/send",
-        "description": "Odeslání PolyDoc zprávy",
+        "description": "Send a PolyDoc message",
         "body": "SendMessageRequest",
         "response": "MessageResult"
       }
@@ -363,7 +363,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
 {
   "type": "connector_config",
   "id": "connector_supabase",
-  "label": "Supabase — hlavní databáze",
+  "label": "Supabase — main database",
   "version": "1.0.0",
   "compressed": false,
   "sensitive": false,
@@ -387,8 +387,8 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
 {
   "type": "env_schema",
   "id": "env_production",
-  "label": "Produkční proměnné prostředí",
-  "note": "POUZE SCHÉMA — žádné skutečné hodnoty!",
+  "label": "Production environment variables",
+  "note": "SCHEMA ONLY — no actual values!",
   "compressed": false,
   "data": {
     "variables": [
@@ -396,7 +396,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
         "key": "SUPABASE_URL",
         "type": "url",
         "required": true,
-        "description": "URL Supabase projektu",
+        "description": "Supabase project URL",
         "example": "https://xxx.supabase.co",
         "group": "database"
       },
@@ -404,7 +404,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
         "key": "ANTHROPIC_API_KEY",
         "type": "secret",
         "required": true,
-        "description": "API klíč pro Claude",
+        "description": "API key for Claude",
         "example": "sk-ant-...",
         "group": "ai"
       },
@@ -412,7 +412,7 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
         "key": "IS_BASE_URL",
         "type": "url",
         "required": true,
-        "description": "Base URL interního IS",
+        "description": "Base URL of the internal IS",
         "example": "https://app.realportal.cz",
         "group": "app"
       }
@@ -424,21 +424,21 @@ Každý typ obsahu je samostatná sekce v `payload[]`.
 
 ---
 
-## 5. Komprese (DEFLATE)
+## 5. Compression (DEFLATE)
 
-Velká data (frontend struktury, knowledge base s příklady) lze komprimovat.
+Large data (frontend structures, knowledge bases with examples) can be compressed.
 
-### Pravidlo: kdy komprimovat
+### Rule: when to compress
 
-| Velikost nekomprimovaných dat | Akce |
-|-------------------------------|------|
-| < 10 KB | Ponech jako čitelný JSON (`compressed: false`) |
-| 10 KB – 100 KB | Doporučena komprese |
-| > 100 KB | Komprese povinná |
+| Uncompressed data size | Action |
+|------------------------|--------|
+| < 10 KB | Keep as readable JSON (`compressed: false`) |
+| 10 KB – 100 KB | Compression recommended |
+| > 100 KB | Compression mandatory |
 
-### Implementace komprese
+### Compression implementation
 
-**Komprese (Node.js, při exportu):**
+**Compression (Node.js, on export):**
 ```javascript
 import { deflateSync } from 'zlib';
 
@@ -449,7 +449,7 @@ function compressPayloadItem(data) {
 }
 ```
 
-**Dekomprese (Node.js, při importu):**
+**Decompression (Node.js, on import):**
 ```javascript
 import { inflateSync } from 'zlib';
 
@@ -460,7 +460,7 @@ function decompressPayloadItem(base64Data) {
 }
 ```
 
-**Dekomprese (prohlížeč, DecompressionStream API):**
+**Decompression (browser, DecompressionStream API):**
 ```javascript
 async function decompressInBrowser(base64Data) {
   const compressed = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
@@ -484,10 +484,10 @@ async function decompressInBrowser(base64Data) {
 
 ---
 
-## 6. Verzování a diff
+## 6. Versioning and diff
 
-Každý snapshot nese referenci na předchozí verzi.
-Diff lze vypočítat na základě `snapshot_id` řetězce.
+Each snapshot carries a reference to the previous version.
+The diff can be computed based on the `snapshot_id` chain.
 
 ```json
 {
@@ -495,7 +495,7 @@ Diff lze vypočítat na základě `snapshot_id` řetězce.
     "project": "2.4.1",
     "snapshot_id": "snap_20260312_0800",
     "previous_snapshot": "snap_20260305_1430",
-    "changelog": "Přidány konektory Supabase + Resend.",
+    "changelog": "Added Supabase + Resend connectors.",
     "diff": {
       "added": ["connector_supabase", "connector_resend"],
       "modified": ["agent_offer_generator"],
@@ -508,12 +508,12 @@ Diff lze vypočítat na základě `snapshot_id` řetězce.
 
 ---
 
-## 7. Podpis a integrita
+## 7. Signature and integrity
 
-Payload hash zajistí, že nikdo data po exportu neupravil.
+The payload hash ensures that no one modified the data after export.
 
 ```javascript
-// Výpočet payload_hash (před podpisem)
+// Compute payload_hash (before signing)
 import { createHash } from 'crypto';
 
 function computePayloadHash(payload) {
@@ -521,7 +521,7 @@ function computePayloadHash(payload) {
   return 'sha256:' + createHash('sha256').update(canonical).digest('hex');
 }
 
-// ES256 podpis hlavičky + hash
+// ES256 signature of header + hash
 import { SignJWT } from 'jose';
 
 async function signTransferDoc(header, privateKey) {
@@ -534,20 +534,20 @@ async function signTransferDoc(header, privateKey) {
     .setProtectedHeader({ alg: 'ES256' })
     .setIssuedAt()
     .sign(privateKey);
-  return jwt; // uloží se do header.signature.value
+  return jwt; // stored in header.signature.value
 }
 
-// Ověření (při importu)
+// Verification (on import)
 import { jwtVerify, importSPKI } from 'jose';
 
 async function verifyTransferDoc(doc) {
   const publicKey = await importSPKI(doc.header.signature.public_key, 'ES256');
   const { payload } = await jwtVerify(doc.header.signature.value, publicKey);
 
-  // Ověř hash payloadu
+  // Verify payload hash
   const computedHash = computePayloadHash(doc.payload);
   if (computedHash !== payload.payload_hash) {
-    throw new Error('Payload hash nesedí — data byla pozměněna!');
+    throw new Error('Payload hash mismatch — data has been tampered with!');
   }
   return true;
 }
@@ -555,24 +555,24 @@ async function verifyTransferDoc(doc) {
 
 ---
 
-## 8. Viewer v prohlížeči
+## 8. Browser viewer
 
-Protože je to stále HTML, viewer zobrazí obsah přenosového souboru.
+Because it is still HTML, the viewer displays the contents of the transfer file.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  [POLY]  RealPortal v2 — Sprint 4 snapshot              │
-│  Exportováno: 12. 3. 2026  ·  Zdroj: Lovable           │
-│  ✅ Podpis ověřen  ·  47 položek  ·  91 KB              │
+│  Exported: 12 Mar 2026  ·  Source: Lovable              │
+│  ✅ Signature verified  ·  47 items  ·  91 KB           │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
-│  📦 Obsah tohoto souboru                                │
+│  📦 Contents of this file                               │
 │                                                         │
-│  🤖 Agenti (2)                                          │
+│  🤖 Agents (2)                                          │
 │     agent_offer_generator v1.3.0                        │
 │     agent_client_support  v0.9.1                        │
 │                                                         │
-│  🧠 Znalostní báze (1)                                  │
+│  🧠 Knowledge base (1)                                  │
 │     kb_realty_rules v2.1.0                              │
 │                                                         │
 │  🎨 Frontend (1)                                        │
@@ -581,30 +581,30 @@ Protože je to stále HTML, viewer zobrazí obsah přenosového souboru.
 │  ⚙️  Backend (1)                                        │
 │     backend_main v3.1.0 · Node/Express                  │
 │                                                         │
-│  🔌 Konektory (3)                                       │
+│  🔌 Connectors (3)                                      │
 │     Supabase, Resend, Stripe                            │
 │                                                         │
-│  🔑 ENV schéma (1)                                      │
-│     12 proměnných · skupiny: database, ai, app          │
+│  🔑 ENV schema (1)                                      │
+│     12 variables · groups: database, ai, app            │
 │                                                         │
 │  ─────────────────────────────────────────────────     │
-│  Změny oproti snap_20260305_1430:                       │
+│  Changes since snap_20260305_1430:                      │
 │  + connector_supabase  + connector_resend               │
-│  ~ agent_offer_generator (upraveno)                     │
+│  ~ agent_offer_generator (modified)                     │
 │                                                         │
-│  [⬇ Stáhnout JSON]  [🔏 Ověřit podpis]  [📋 Kopírovat] │
+│  [⬇ Download JSON]  [🔏 Verify signature]  [📋 Copy]   │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 9. Import do cílového systému
+## 9. Import into the target system
 
 ### Lovable
 ```javascript
-// Lovable Import API (pseudo-kód)
-const transfer = await PolyDocTransfer.load('projekt-snapshot.html');
-await transfer.verify(); // ověř podpis
+// Lovable Import API (pseudo-code)
+const transfer = await PolyDocTransfer.load('project-snapshot.html');
+await transfer.verify(); // verify signature
 await lovable.importProject({
   agentConfigs:   transfer.getByType('agent_config'),
   knowledgeBases: transfer.getByType('knowledge_base'),
@@ -615,7 +615,7 @@ await lovable.importProject({
 
 ### Cursor / VS Code
 ```javascript
-// .polydoc-import.js v kořenu projektu
+// .polydoc-import.js in project root
 import { PolyDocTransfer } from '@polydoc/transfer';
 
 const t = await PolyDocTransfer.load('./handoff.html');
@@ -624,7 +624,7 @@ await t.extractTo('./src', { types: ['frontend_structure', 'backend_structure'] 
 await t.writeEnvSchema('./.env.example');
 ```
 
-### Interní IS (PHP)
+### Internal IS (PHP)
 ```php
 $transfer = PolyDocTransfer::load('backup.html');
 $transfer->verify(); // throws on invalid signature
@@ -639,27 +639,27 @@ foreach ($transfer->getByType('connector_config') as $connector) {
 
 ---
 
-## 10. Bezpečnostní pravidla
+## 10. Security rules
 
-- **`env_schema` NIKDY neobsahuje skutečné hodnoty** — pouze klíče, typy, popisy
-- **`connector_config`** — ukládá konfiguraci (URL, tabulky, nastavení), ne API klíče
-- Citlivé payload položky lze šifrovat stejným mechanismem jako PolyDoc dokumenty (AES-GCM, klíč mimo soubor)
-- Podpis ověřuje integritu — zajistí, že soubor nebyl upraven po exportu
-- Před importem vždy ověřit podpis — `transfer.verify()` jako první krok
-
----
-
-## 11. Kompatibilita s nástroji
-
-| Nástroj | Stav | Poznámka |
-|---------|------|----------|
-| Lovable | Plánováno | Export/Import via API |
-| Cursor | Plánováno | VS Code extension |
-| Claude Code | Plánováno | Nativní čtení z #raw-data |
-| Vlastní IS (PHP/Node) | Hotovo | Viz implementace výše |
-| n8n / Make | Plánováno | HTTP node + JSON parse |
-| Zapier | Plánováno | Webhook trigger |
+- **`env_schema` NEVER contains actual values** — only keys, types, descriptions
+- **`connector_config`** — stores configuration (URL, tables, settings), not API keys
+- Sensitive payload items can be encrypted using the same mechanism as PolyDoc documents (AES-GCM, key stored outside the file)
+- The signature verifies integrity — ensures the file was not modified after export
+- Always verify the signature before import — `transfer.verify()` as the first step
 
 ---
 
-*PolyDoc Transfer Format v1.0 · MIT licence · 2026-03-12*
+## 11. Tool compatibility
+
+| Tool | Status | Note |
+|------|--------|------|
+| Lovable | Planned | Export/Import via API |
+| Cursor | Planned | VS Code extension |
+| Claude Code | Planned | Native reading from #raw-data |
+| Custom IS (PHP/Node) | Done | See implementation above |
+| n8n / Make | Planned | HTTP node + JSON parse |
+| Zapier | Planned | Webhook trigger |
+
+---
+
+*PolyDoc Transfer Format v1.0 · MIT license · 2026-03-12*
