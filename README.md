@@ -233,10 +233,20 @@ xdg-open examples/invoice-demo.html  # Linux
 2. Replace the JSON in `<script type="application/poly+json" id="raw-data">`
 3. Open in browser — done
 
-**Run the render engine:**
+**Run with Docker (easiest):**
+```bash
+docker run -p 3000:3000 ghcr.io/mastervector-svg/polydoc:latest
+# POST /render with PolyDoc JSON → get html_url + mail_html
+```
+
+**Or with docker-compose:**
+```bash
+docker compose up
+```
+
+**Run locally (Node.js):**
 ```bash
 cd server && npm install && npm start
-# POST /render with PolyDoc JSON → get html_url + mail_html
 ```
 
 **Backend integration (PHP):**
