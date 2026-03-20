@@ -40,6 +40,25 @@ export function validatePolyDoc(json) {
 }
 
 /**
+ * Resolve a LocalizedString — plain string or {"en":"...","cs":"..."} object.
+ * Falls back: lang → 'en' → first available value.
+ */
+function t(val, lang = 'en') {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') return val[lang] ?? val['en'] ?? Object.values(val)[0] ?? '';
+  return String(val);
+}
+
+/**
+ * Resolve a UI label from the doc's i18n block.
+ * Falls back: lang → 'en' → key itself.
+ */
+function i18n(key, lang, doc) {
+  return doc?.i18n?.[lang]?.[key] ?? doc?.i18n?.['en']?.[key] ?? key;
+}
+
+/**
  * Build the CSS variable block from visuals.colors, if present.
  */
 function buildCssVars(jsonData) {
@@ -57,52 +76,93 @@ function buildCssVars(jsonData) {
  * Inject JSON data into a template HTML string.
  * Also injects theme CSS vars into an existing :root block if visuals.colors is present.
  */
-function buildMailTokens(jsonData) {
+function buildMailTokens(jsonData, lang) {
   const h = jsonData.header || {};
   const m = jsonData.metadata || {};
   const v = jsonData.visuals || {};
   const colors = v.colors || {};
+
+  // Resolve lang: parameter → metadata.language → 'en'
+  const L = lang || m.language || 'en';
+  const _ = (val) => t(val, L);
+  const label = (key, fallback) => {
+    const fromI18n = i18n(key, L, jsonData);
+    return fromI18n !== key ? fromI18n : fallback;
+  };
+
   const supplier = jsonData.content?.sections?.find(s => s.role === 'supplier')?.data || {};
   const client   = jsonData.content?.sections?.find(s => s.role === 'client')?.data || {};
   const tableSection = jsonData.content?.sections?.find(s => s.type === 'table');
   const footer = tableSection?.footer || {};
 
+  const title = _(m.title) || h.doc_type || 'Document';
+
   return {
-    '{{TITLE}}':          m.title || h.doc_type || 'Dokument',
+    // Document identity
+    '{{TITLE}}':          title,
     '{{DOC_ID}}':         h.doc_id || '',
     '{{DOC_TYPE}}':       h.doc_type || '',
     '{{CREATED}}':        h.created || '',
-    '{{PREHEADER_TEXT}}': m.title || '',
+    '{{PREHEADER_TEXT}}': title,
+    '{{AUTHOR}}':         m.author      || '',
+    '{{GENERATOR}}':      h.generator   || 'PolyDoc Render Engine',
+
+    // Colors
     '{{PRIMARY_COLOR}}':  colors.primary || '#0d6efd',
     '{{ACCENT_COLOR}}':   colors.accent  || '#ffc107',
-    '{{DOC_HEADING}}':    m.title || h.doc_type || 'Dokument',
-    '{{DOC_META_LINE}}':  `Číslo: ${h.doc_id || ''}`,
-    '{{SUPPLIER_NAME}}':  supplier.name    || '',
-    '{{SUPPLIER_ID}}':    supplier.id      || '',
+
+    // Header
+    '{{DOC_HEADING}}':    title,
+    '{{DOC_META_LINE}}':  `${label('label_number', 'No')}: ${h.doc_id || ''}`,
+
+    // Parties
+    '{{SUPPLIER_NAME}}':    supplier.name    || '',
+    '{{SUPPLIER_ID}}':      supplier.id      || '',
     '{{SUPPLIER_ADDRESS}}': supplier.address || '',
-    '{{SUPPLIER_BANK}}':  supplier.bank    || '',
-    '{{CLIENT_NAME}}':    client.name      || '',
-    '{{CLIENT_ID}}':      client.id        || '',
-    '{{CLIENT_ADDRESS}}': client.address   || '',
-    '{{TABLE_ROWS_HTML}}': (tableSection?.rows || []).map((row, i) => {
-      const bg = i % 2 === 0 ? '#ffffff' : '#f9fafb';
+    '{{SUPPLIER_BANK}}':    supplier.bank    || '',
+    '{{CLIENT_NAME}}':      client.name      || '',
+    '{{CLIENT_ID}}':        client.id        || '',
+    '{{CLIENT_ADDRESS}}':   client.address   || '',
+
+    // UI labels — from i18n block, with English fallbacks
+    '{{LABEL_SUPPLIER}}':      label('supplier',      'Supplier'),
+    '{{LABEL_CLIENT}}':        label('client',        'Client'),
+    '{{LABEL_DESC}}':          label('description',   'Description'),
+    '{{LABEL_QTY}}':           label('qty',           'Qty'),
+    '{{LABEL_UNIT_PRICE}}':    label('unit_price',    'Unit price'),
+    '{{LABEL_TOTAL}}':         label('total',         'Total'),
+    '{{LABEL_SUBTOTAL}}':      label('subtotal',      'Subtotal'),
+    '{{LABEL_VAT}}':           label('vat',           'VAT'),
+    '{{LABEL_TOTAL_DUE}}':     label('total_due',     'Total due'),
+    '{{LABEL_PAYMENT_TERMS}}': label('payment_terms', 'Payment terms'),
+    '{{LABEL_BANK_TRANSFER}}': label('bank_transfer', 'Bank transfer within 30 days'),
+    '{{LABEL_VS}}':            label('variable_symbol', 'Variable symbol'),
+    '{{LABEL_KS}}':            label('constant_symbol', 'Constant symbol'),
+
+    // Table rows — cells resolved through t()
+    '{{TABLE_ROWS_HTML}}': (tableSection?.rows || []).map((row, idx) => {
+      const bg = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
       const cells = row.map(cell =>
-        `<td style="padding:10px 14px;font-size:13px;border-bottom:1px solid #e5e7eb;">${cell}</td>`
+        `<td style="padding:10px 14px;font-size:13px;border-bottom:1px solid #e5e7eb;">${_(cell)}</td>`
       ).join('');
       return `<tr style="background:${bg};">${cells}</tr>`;
     }).join(''),
-    '{{TOTAL_BASE}}':     footer.total ? String(footer.total) : '',
+
+    // Totals
+    '{{TOTAL_BASE}}':     footer.total ? String(footer.total.toLocaleString()) : '',
     '{{TOTAL_VAT}}':      footer.total && footer.vat_rate
-                            ? String(Math.round(footer.total * footer.vat_rate / 100)) : '',
+                            ? String(Math.round(footer.total * footer.vat_rate / 100).toLocaleString()) : '',
     '{{TOTAL_WITH_VAT}}': footer.total && footer.vat_rate
-                            ? String(Math.round(footer.total * (1 + footer.vat_rate / 100))) : '',
+                            ? String(Math.round(footer.total * (1 + footer.vat_rate / 100)).toLocaleString()) : '',
     '{{CURRENCY}}':       footer.currency || 'CZK',
     '{{VAT_RATE}}':       footer.vat_rate != null ? String(footer.vat_rate) : '21',
+
+    // Custom fields
     '{{VS}}':             m.custom_fields?.vs || '',
     '{{KS}}':             m.custom_fields?.ks || '',
-    '{{FULL_DOC_URL}}':       `#`,
-    '{{AUTHOR}}':             m.author      || '',
-    '{{GENERATOR}}':          h.generator   || 'PolyDoc Render Engine',
+    '{{FULL_DOC_URL}}':   m.custom_fields?.full_url || '#',
+
+    // JSON blobs
     '{{CONTENT_JSON}}':       JSON.stringify(jsonData.content || {}),
     '{{CUSTOM_FIELDS_JSON}}': JSON.stringify(m.custom_fields || {}),
     '{{VISUALS_JSON}}':       JSON.stringify(jsonData.visuals || {}),
@@ -123,14 +183,15 @@ function applyMailTokens(html, tokens) {
   return html;
 }
 
-function injectIntoTemplate(templateHtml, jsonData, isMail = false) {
+function injectIntoTemplate(templateHtml, jsonData, lang = false) {
+  const isMail = !!lang;
   // Replace the raw-data script block
   const injectedScript = `<script type="application/poly+json" id="raw-data">\n${JSON.stringify(jsonData, null, 2)}\n</script>`;
   let html = templateHtml.replace(RAW_DATA_REGEX, injectedScript);
 
   // For mail version: replace {{PLACEHOLDER}} tokens
   if (isMail) {
-    html = applyMailTokens(html, buildMailTokens(jsonData));
+    html = applyMailTokens(html, buildMailTokens(jsonData, isMail));
   }
 
   // Inject CSS vars into :root block if theme colors are defined
@@ -199,8 +260,9 @@ export async function renderFull(jsonData) {
 /**
  * Render the mail HTML view for a PolyDoc.
  */
-export async function renderMail(jsonData) {
+export async function renderMail(jsonData, lang) {
   const templatePath = join(TEMPLATES_DIR, 'polydoc-mail.html');
   const templateHtml = await readFile(templatePath, 'utf-8');
-  return injectIntoTemplate(templateHtml, jsonData, true);
+  const resolvedLang = lang || jsonData.metadata?.language || 'en';
+  return injectIntoTemplate(templateHtml, jsonData, resolvedLang);
 }

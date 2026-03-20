@@ -112,7 +112,7 @@
                 <td class="col-half" width="48%" valign="top"
                   style="background:#f8f9fa;border-radius:6px;padding:16px;border:1px solid #e5e7eb;">
                   <p style="margin:0 0 6px;font-size:10px;font-weight:700;text-transform:uppercase;
-                    letter-spacing:1.5px;color:{{PRIMARY_COLOR}};">Dodavatel</p>
+                    letter-spacing:1.5px;color:{{PRIMARY_COLOR}};">{{LABEL_SUPPLIER}}</p>
                   <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:#1c1e26;">{{SUPPLIER_NAME}}</p>
                   <p style="margin:0;font-size:12px;color:#6b7280;line-height:1.6;">
                     IČ: {{SUPPLIER_ID}}<br>
@@ -126,7 +126,7 @@
                 <td class="col-half" width="48%" valign="top"
                   style="background:#f8f9fa;border-radius:6px;padding:16px;border:1px solid #e5e7eb;">
                   <p style="margin:0 0 6px;font-size:10px;font-weight:700;text-transform:uppercase;
-                    letter-spacing:1.5px;color:{{PRIMARY_COLOR}};">Odběratel</p>
+                    letter-spacing:1.5px;color:{{PRIMARY_COLOR}};">{{LABEL_CLIENT}}</p>
                   <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:#1c1e26;">{{CLIENT_NAME}}</p>
                   <p style="margin:0;font-size:12px;color:#6b7280;line-height:1.6;">
                     IČ: {{CLIENT_ID}}<br>
@@ -147,13 +147,13 @@
               <!-- Table header -->
               <tr style="background:{{PRIMARY_COLOR}};">
                 <td style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;
-                  letter-spacing:1px;color:white;">Popis</td>
+                  letter-spacing:1px;color:white;">{{LABEL_DESC}}</td>
                 <td style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;
-                  letter-spacing:1px;color:white;text-align:right;" class="hide-mobile">Mn.</td>
+                  letter-spacing:1px;color:white;text-align:right;" class="hide-mobile">{{LABEL_QTY}}</td>
                 <td style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;
-                  letter-spacing:1px;color:white;text-align:right;" class="hide-mobile">Jedn. cena</td>
+                  letter-spacing:1px;color:white;text-align:right;" class="hide-mobile">{{LABEL_UNIT_PRICE}}</td>
                 <td style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;
-                  letter-spacing:1px;color:white;text-align:right;">Celkem</td>
+                  letter-spacing:1px;color:white;text-align:right;">{{LABEL_TOTAL}}</td>
               </tr>
 
               <!-- Table rows - generováno IS -->
@@ -161,18 +161,18 @@
 
               <!-- Totals -->
               <tr style="border-top:1px solid #e5e7eb;">
-                <td colspan="3" style="padding:9px 14px;font-size:13px;color:#6b7280;">Základ daně</td>
+                <td colspan="3" style="padding:9px 14px;font-size:13px;color:#6b7280;">{{LABEL_SUBTOTAL}}</td>
                 <td style="padding:9px 14px;font-size:13px;color:#6b7280;text-align:right;
                   font-family:'Courier New',monospace;">{{TOTAL_BASE}} {{CURRENCY}}</td>
               </tr>
               <tr>
-                <td colspan="3" style="padding:9px 14px;font-size:13px;color:#6b7280;">DPH {{VAT_RATE}}%</td>
+                <td colspan="3" style="padding:9px 14px;font-size:13px;color:#6b7280;">{{LABEL_VAT}} {{VAT_RATE}}%</td>
                 <td style="padding:9px 14px;font-size:13px;color:#6b7280;text-align:right;
                   font-family:'Courier New',monospace;">{{TOTAL_VAT}} {{CURRENCY}}</td>
               </tr>
               <tr style="background:{{PRIMARY_COLOR}};">
                 <td colspan="3" style="padding:11px 14px;font-size:14px;font-weight:700;color:white;">
-                  Celkem k úhradě</td>
+                  {{LABEL_TOTAL_DUE}}</td>
                 <td style="padding:11px 14px;font-size:14px;font-weight:700;color:white;text-align:right;
                   font-family:'Courier New',monospace;">{{TOTAL_WITH_VAT}} {{CURRENCY}}</td>
               </tr>
@@ -188,8 +188,8 @@
               style="border-left:3px solid {{ACCENT_COLOR}};background:#fffbeb;border-radius:0 6px 6px 0;padding:14px 18px;">
               <tr>
                 <td style="font-size:13px;color:#4b4b2f;line-height:1.75;">
-                  <strong>Platební podmínky:</strong> Platba převodem do 30 dnů.<br>
-                  Variabilní symbol: <strong>{{VS}}</strong> &nbsp;·&nbsp; Konstantní symbol: {{KS}}
+                  <strong>{{LABEL_PAYMENT_TERMS}}:</strong> {{LABEL_BANK_TRANSFER}}.<br>
+                  {{LABEL_VS}}: <strong>{{VS}}</strong> &nbsp;·&nbsp; {{LABEL_KS}}: {{KS}}
                 </td>
               </tr>
             </table>

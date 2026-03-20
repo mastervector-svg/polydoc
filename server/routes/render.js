@@ -20,11 +20,12 @@ router.post('/', async (req, res, next) => {
     }
 
     const { doc_id, doc_type } = body.header;
+    const lang = body.options?.lang || body.metadata?.language || 'en';
 
     // Render both views
     const [fullHtml, mailHtml] = await Promise.all([
       renderFull(body),
-      renderMail(body),
+      renderMail(body, lang),
     ]);
 
     // Ensure output directory exists
