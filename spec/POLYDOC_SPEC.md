@@ -330,7 +330,167 @@ Mail verze je staticky vyrendrovaná kopie bez JS.
 
 ---
 
-## 11. Roadmapa
+## 11. Komprese (`header.compression`)
+
+PolyDoc podporuje inline DEFLATE kompresi datového payloadu. Používá se zejména v transfer formátu pro velké položky (> 10 KB), ale může být aplikována i na celý obsah dokumentu.
+
+### Formát v hlavičce
+
+```json
+{
+  "header": {
+    "format": "poly/1.0",
+    "doc_id": "TRANSFER-2026-001",
+    "doc_type": "transfer",
+    "compression": {
+      "algorithm": "deflate",
+      "encoding": "base64",
+      "original_size": 52480,
+      "compressed_size": 9120
+    }
+  }
+}
+```
+
+### Pravidla komprese
+
+| Pravidlo | Hodnota |
+|----------|---------|
+| Algoritmus | DEFLATE (RFC 1951) |
+| Kódování výstupu | Base64 |
+| Threshold (auto-compress) | 10 KB |
+| Pole `data` při kompresi | `base64(deflate(JSON.stringify(payload)))` |
+
+Položky pod 10 KB zůstávají jako čitelný JSON (nekomprimované).
+Položky nad 10 KB se automaticky komprimují. Interpret pozná kompresi podle pole `compressed: true`.
+
+### Příklad komprimované položky (transfer)
+
+```json
+{
+  "type": "knowledge_base",
+  "id": "kb-main",
+  "compressed": true,
+  "data": "eJyNkstqwzAQRff...",
+  "original_size": 45230,
+  "compressed_size": 8940
+}
+```
+
+Decompress: `JSON.parse(inflateSync(Buffer.from(data, 'base64')).toString('utf-8'))`
+
+---
+
+## 12. Šifrování (`header.encryption`)
+
+PolyDoc podporuje fragment-key šifrování pro citlivé dokumenty. Klíč je součástí URL fragmentu (`#`) — ten se nikdy neposílá na server.
+
+### Formát v hlavičce
+
+```json
+{
+  "header": {
+    "format": "poly/1.0",
+    "doc_id": "CONTRACT-2026-001",
+    "doc_type": "contract",
+    "encryption": {
+      "algorithm": "AES-256-GCM",
+      "key_location": "url_fragment",
+      "iv": "base64-encoded-iv"
+    }
+  }
+}
+```
+
+### Jak to funguje
+
+```
+Server vygeneruje AES-256-GCM klíč
+  ↓
+Zašifruje obsah dokumentu (content, logic, metadata)
+  ↓
+Uloží zašifrovaný dokument na server
+  ↓
+Vrátí URL: https://example.cz/doc/CONTRACT-001.html#key=<base64-key>
+  ↓
+Prohlížeč přečte klíč z fragmentu (fragment se NIKDY neposílá na server)
+  ↓
+WebCrypto API (SubtleCrypto) dešifruje obsah přímo v prohlížeči
+```
+
+### Access modes
+
+| Mode | Popis |
+|------|-------|
+| `public` | Bez omezení — výchozí |
+| `token` | Vyžaduje Bearer token pro načtení full verze |
+| `encrypted` | AES-256-GCM, klíč v URL fragmentu |
+
+```json
+{
+  "header": {
+    "access": {
+      "mode": "encrypted",
+      "hint": "Odkaz s klíčem obdržíte e-mailem"
+    }
+  }
+}
+```
+
+---
+
+## 13. Lazy load sekcí
+
+Velké sekce (obrázky, přílohy, long-form obsah) lze označit jako lazy — interpret je nenačte při prvním renderu, ale až na vyžádání (scroll nebo klik).
+
+### Lazy sekce v JSON
+
+```json
+{
+  "type": "image",
+  "lazy": true,
+  "src": "https://cdn.example.cz/foto-velke.jpg",
+  "alt": "Fotografie nemovitosti",
+  "width": "100%"
+}
+```
+
+```json
+{
+  "type": "rich_text",
+  "lazy": true,
+  "lazy_label": "Zobrazit úplné podmínky...",
+  "src": "https://api.example.cz/doc/CONTRACT-001/terms",
+  "html": null
+}
+```
+
+### Pravidla lazy load
+
+| Pravidlo | Hodnota |
+|----------|---------|
+| Pole | `"lazy": true` na sekci |
+| Trigger | `IntersectionObserver` při scroll, nebo klik na placeholder |
+| `lazy_label` | Text placeholderu (volitelné, default: "Načíst...") |
+| `src` | URL pro fetch obsahu (pro `rich_text`, externí `image`) |
+| Fallback | Pokud `src` není dostupný, zobrazí se `lazy_label` jako statický text |
+
+### Interpreter behavior
+
+```javascript
+// Interpreter při lazy sekci vyrendruje placeholder:
+<div class="poly-lazy-placeholder" data-src="..." data-type="rich_text">
+  <button>Načíst...</button>
+</div>
+
+// Po kliknutí / scroll do view fetchne src a nahradí placeholder obsahem
+```
+
+**Mail verze:** Lazy sekce se v mail verzi renderují staticky (bez JS) — zobrazí se `lazy_label` jako text s odkazem na full verzi.
+
+---
+
+## 14. Roadmapa
 
 ### v1.0 (aktuální)
 - [x] JSON schéma (header, metadata, content, visuals, logic)
@@ -354,7 +514,7 @@ Mail verze je staticky vyrendrovaná kopie bez JS.
 
 ---
 
-## 12. GitHub & odkaz ve spec
+## 15. GitHub & odkaz ve spec
 
 ```json
 {
