@@ -1,0 +1,11 @@
+services:
+  polydoc:
+    image: ghcr.io/mastervector-svg/polydoc:latest
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./output:/app/output
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
