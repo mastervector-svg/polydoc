@@ -71,7 +71,7 @@ A single `.html` file that is simultaneously:
 
 ---
 
-## Four Use Cases
+## Five Use Cases
 
 ### 1. Transactional Documents
 Invoices, confirmations, offers, contracts.
@@ -133,6 +133,59 @@ Multi-recipient: Alice gets parts 1 and 3. Bob gets all parts. Neither knows the
 This is what secure email should have been. Except it's a plain HTML file.
 
 [→ Live demo](https://mastervector-svg.github.io/polydoc/examples/envelope-demo.html) · [→ Spec](spec/POLYDOC_ENVELOPE.md)
+
+### 5. Live Commerce Document
+
+This is the one that replaces EDI.
+
+A PolyDoc Envelope can embed a **portal config** (credentials, API key) as an encrypted part, then pull **live listings** from that portal as an on-demand fill slot — current prices, current stock, current availability. The recipient opens a single HTML file and sees real data, not a screenshot from last Tuesday.
+
+```
+Supplier builds envelope:
+  🔑 portal-config.json    encrypted    ← API key / login, never leaves server
+  📦 listings              on-demand    ← fetched live from portal API (cache: 1h)
+  ✅ order                 slot         ← buyer fills this → sends back
+
+Buyer opens in browser → sees live listings → clicks order → done.
+Or: AI agent opens it → reads listings JSON → places order without browser.
+```
+
+**Why this matters:**
+
+| EDI (1990s) | PolyDoc Commerce |
+|-------------|-----------------|
+| Proprietary VAN network | Plain HTML file, any email |
+| $50k integration project | One `POST /envelope` call |
+| Separate viewer software | Any browser, zero install |
+| Static snapshot | Live data via Fill Providers |
+| No audit trail | Manifest signature: buyer saw *exactly this version* |
+
+**Both directions work:**
+
+- **Buy side:** Receive an envelope from a supplier → live stock + prices → order slot → sign and return
+- **Sell side:** Generate an envelope with your catalog → send to 100 buyers → each sees their negotiated price (different encrypted config per recipient, multi-recipient envelope)
+
+The manifest signature guarantees that the listings the buyer saw at order time are the listings the supplier sent. "Price changed after you clicked" stops being possible.
+
+```json
+"parts": [
+  { "id": "config",   "type": "application/json", "encrypted": true,
+    "fill": { "mode": "manual" } },
+
+  { "id": "listings", "type": "application/json",  "slot": true,
+    "fill": { "mode": "on-demand",
+              "src": "https://portal.example.com/api/search?q=cnc-router",
+              "auth": "api_key", "auth_from_part": "config",
+              "cache_ttl": 3600 } },
+
+  { "id": "order",    "type": "application/x-polydoc-action", "slot": true,
+    "fill": { "mode": "manual", "review_required": true } }
+]
+```
+
+`auth_from_part: "config"` — the server reads credentials from the encrypted part and uses them for the provider call. Credentials never appear in the HTML.
+
+[→ Fill Providers spec](spec/POLYDOC_ENVELOPE.md#11-fill-providers--on-demand-slot-filling-by-external-service)
 
 ---
 
