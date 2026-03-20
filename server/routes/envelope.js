@@ -1048,4 +1048,209 @@ router.get('/:doc_id', async (req, res, next) => {
   }
 });
 
+// ── helpers shared by fill routes ────────────────────────────────────────────
+
+async function loadEnvelope(doc_id) {
+  const htmlPath = join(OUTPUT_DIR, `${doc_id}-envelope.html`);
+  let html;
+  try {
+    html = await readFile(htmlPath, 'utf-8');
+  } catch {
+    return null;
+  }
+  const m = html.match(/<script[^>]+type="application\/poly\+json"[^>]*>([\s\S]*?)<\/script>/);
+  if (!m) return null;
+  return { html, envelope: JSON.parse(m[1]), htmlPath };
+}
+
+function decodePartData(part) {
+  if (!part?.data) return null;
+  try {
+    return Buffer.from(part.data, 'base64').toString('utf-8');
+  } catch {
+    return part.data;
+  }
+}
+
+// ── POST /:doc_id/fill-ai — LLM agent fills a slot ───────────────────────────
+
+router.post('/:doc_id/fill-ai', async (req, res, next) => {
+  try {
+    const { doc_id } = req.params;
+    const {
+      slot_id,
+      model,          // override model, default from env
+      auto_fill = false,  // if true, skip review and fill immediately
+      extra_context,  // optional extra instructions from caller
+    } = req.body;
+
+    if (!slot_id) return res.status(400).json({ ok: false, error: 'slot_id is required' });
+
+    // LLM config from env (OpenAI-compatible)
+    const llmBase      = process.env.LLM_BASE_URL    || 'http://localhost:11434/v1';
+    const llmKey       = process.env.LLM_API_KEY     || 'local';
+    const llmKeyHeader = process.env.LLM_KEY_HEADER  || 'Authorization'; // 'X-API-Key' for some proxies
+    const llmModel     = model || process.env.LLM_MODEL || 'qwen2.5-coder:14b';
+
+    // Load envelope
+    const loaded = await loadEnvelope(doc_id);
+    if (!loaded) {
+      return res.status(404).json({ ok: false, error: `Envelope "${doc_id}" not found` });
+    }
+    const { envelope, htmlPath, html } = loaded;
+
+    // Find slot
+    const manifestPart = envelope.manifest?.parts?.find(p => p.id === slot_id);
+    if (!manifestPart) {
+      return res.status(404).json({ ok: false, error: `Slot "${slot_id}" not found` });
+    }
+    if (!manifestPart.slot) {
+      return res.status(409).json({ ok: false, error: `Part "${slot_id}" is not a slot` });
+    }
+
+    // Build context from already-filled parts
+    const filledContext = (envelope.parts ?? [])
+      .map(p => {
+        const meta = envelope.manifest?.parts?.find(m => m.id === p.id);
+        const content = decodePartData(p);
+        if (!content) return null;
+        const label = typeof meta?.label === 'object' ? (meta.label.en ?? meta.label.cs) : meta?.label ?? p.id;
+        return `### ${label} (${meta?.type ?? 'unknown'})\n\`\`\`\n${content.slice(0, 2000)}${content.length > 2000 ? '\n... [truncated]' : ''}\n\`\`\``;
+      })
+      .filter(Boolean)
+      .join('\n\n');
+
+    const envelopeLabel = typeof envelope.manifest?.label === 'object'
+      ? (envelope.manifest.label.en ?? envelope.manifest.label.cs)
+      : envelope.manifest?.label ?? doc_id;
+
+    const fillPrompt = manifestPart.fill_prompt || manifestPart.fill?.prompt || '';
+    const slotLabel  = typeof manifestPart.label === 'object'
+      ? (manifestPart.label.en ?? manifestPart.label.cs)
+      : manifestPart.label ?? slot_id;
+
+    // Build LLM prompt
+    const systemPrompt = `You are an expert assistant helping fill parts of a PolyDoc envelope.
+A PolyDoc envelope is a cryptographic container for project files.
+You must generate ONLY the raw file content — no explanation, no markdown wrapper, no code fences.
+Output exactly the content of the file, ready to use.`;
+
+    const userPrompt = [
+      `Envelope: "${envelopeLabel}"`,
+      filledContext ? `\n## Already filled parts (for context):\n${filledContext}` : '',
+      `\n## Your task`,
+      `Generate the content of: **${slotLabel}** (MIME type: \`${manifestPart.type}\`)`,
+      fillPrompt ? `\nInstructions: ${fillPrompt}` : '',
+      extra_context ? `\nAdditional context: ${extra_context}` : '',
+      `\nOutput ONLY the raw file content. No explanations.`,
+    ].filter(Boolean).join('\n');
+
+    // Call LLM (OpenAI-compatible)
+    let generated;
+    try {
+      const llmRes = await fetch(`${llmBase}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          [llmKeyHeader]: llmKeyHeader === 'Authorization' ? `Bearer ${llmKey}` : llmKey,
+        },
+        body: JSON.stringify({
+          model: llmModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user',   content: userPrompt },
+          ],
+          temperature: 0.2,
+          max_tokens: 4096,
+        }),
+      });
+      if (!llmRes.ok) {
+        const errBody = await llmRes.text();
+        throw new Error(`LLM API ${llmRes.status}: ${errBody.slice(0, 200)}`);
+      }
+      const llmJson = await llmRes.json();
+      generated = llmJson.choices?.[0]?.message?.content?.trim();
+      if (!generated) throw new Error('LLM returned empty response');
+    } catch (err) {
+      return res.status(502).json({
+        ok: false,
+        error: `LLM call failed: ${err.message}`,
+        llm_base: llmBase,
+        llm_model: llmModel,
+      });
+    }
+
+    // auto_fill=false → return draft for human review, don't fill yet
+    if (!auto_fill) {
+      return res.json({
+        ok: true,
+        doc_id,
+        slot_id,
+        status: 'draft',
+        model: llmModel,
+        draft: generated,
+        review_required: manifestPart.fill?.review_required !== false,
+        hint: `Review the draft, then call POST /envelope/${doc_id}/fill with { slot_id, data: <content> } to apply.`,
+      });
+    }
+
+    // auto_fill=true → apply immediately (same logic as POST /:doc_id/fill)
+    const originalSize = Buffer.byteLength(generated, 'utf-8');
+    let storedData, isCompressed, storedSize;
+
+    if (originalSize > 1024) {
+      const compressed = compressPayload({ _content: generated });
+      storedData = compressed.data;
+      storedSize = compressed.compressed_size;
+      isCompressed = true;
+    } else {
+      storedData = Buffer.from(generated, 'utf-8').toString('base64');
+      storedSize = Buffer.byteLength(storedData, 'utf-8');
+      isCompressed = false;
+    }
+
+    const hash = sha256(storedData);
+    const filledAt = new Date().toISOString();
+
+    manifestPart.slot_state   = 'filled';
+    manifestPart.filled_at    = filledAt;
+    manifestPart.hash_at_fill = hash;
+    manifestPart.size_original = originalSize;
+    manifestPart.size_stored  = storedSize;
+    manifestPart.compressed   = isCompressed;
+    manifestPart.filled_by    = { agent: llmModel };
+
+    if (!envelope.parts) envelope.parts = [];
+    const idx = envelope.parts.findIndex(p => p.id === slot_id);
+    const entry = { id: slot_id, compressed: isCompressed, data: storedData };
+    if (idx >= 0) envelope.parts[idx] = entry; else envelope.parts.push(entry);
+
+    const manifestHash = sha256(JSON.stringify(envelope.manifest.parts));
+    const newHtml = buildEnvelopeHtml(envelope);
+    await writeFile(htmlPath, newHtml, 'utf-8');
+
+    const emptySlots = envelope.manifest.parts.filter(
+      p => p.slot && (p.slot_state ?? 'empty') !== 'filled'
+    ).length;
+
+    return res.json({
+      ok: true,
+      doc_id,
+      slot_id,
+      status: 'filled',
+      model: llmModel,
+      filled_at: filledAt,
+      hash,
+      manifest_hash: manifestHash,
+      html_url: `/output/${doc_id}-envelope.html`,
+      empty_slots_remaining: emptySlots,
+      envelope_complete: emptySlots === 0,
+      draft: generated,  // always return what was generated
+    });
+
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
