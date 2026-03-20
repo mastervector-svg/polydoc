@@ -7,6 +7,50 @@ PolyDoc format versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.0] — 2026-03-20
+
+### Added
+
+#### Envelope format (`doc_type: "envelope"`)
+- `spec/POLYDOC_ENVELOPE.md` — kompletní specifikace kryptografické obálky
+  - Libovolný obsah jako části: text, JSON, YAML, PDF, ZIP, tar.gz, vnořený PolyDoc, …
+  - Anonymní příjemci přes SHA256 key hinty — server nikdy nezná identity
+  - Podpis pokrývá manifest (hash každé části), ne obsah — potvrzení bez otevření
+  - Hybrid encryption: AES-256-GCM obsah + RSA-OAEP klíče per-recipient
+  - Lazy load + selektivní šifrování per-part
+- `examples/envelope-demo.html` — živý příklad: průvodní dopis + faktura + platební podmínky
+
+#### Collaborative Slots (§10)
+- `slot: true` v manifest.parts — část čekající na vyplnění
+- `fill_prompt` — přirozený jazyk jako instrukce pro AI agenta
+- `fill.mode: manual | on-demand | scheduled` — kdy a jak se naplní
+- `workspace://` schéma — propojení slotu s lokálním souborem
+- `slot_state: empty → filled` + `hash_at_fill`, `filled_at`, `filled_by`
+
+#### Server API — Envelope endpoints
+- `POST /envelope` — vytvoř obálku (embedded části + prázdné sloty)
+- `GET /envelope/:doc_id` — stav obálky: manifest, `slots_empty`, `envelope_complete`
+- `POST /envelope/:doc_id/fill` — naplň slot daty (komprimuje, hashuje, přegeneruje HTML)
+- `POST /envelope/:doc_id/fill-ai` — **LLM agent naplní slot**
+  - Sestaví kontext z vyplněných částí + `fill_prompt`
+  - Zavolá OpenAI-compatible API (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_KEY_HEADER`, `LLM_MODEL`)
+  - `auto_fill: false` → vrátí draft k review; `auto_fill: true` → naplní přímo
+  - Testováno s: Ollama (lokální), `qwen2.5-coder:32b` (vLLM)
+
+#### VS Code Extension (scaffold)
+- `vscode-extension/` — TypeScript scaffold, nepublikováno
+  - Sidebar panel: skenuje workspace, zobrazí obálky a jejich sloty
+  - Fill slot jedním klikem — vybere soubor z workspace, pošle na server nebo patchne HTML přímo
+  - Pack Envelope wizard — vyber soubory, pojmenuj, embed nebo slot
+  - Preview panel — renderuje PolyDoc/Envelope přímo v editoru
+  - Scheduled fill — cron parser, minutový ticker, auto-fetch z URL
+
+### Changed
+- README: Envelope přidán jako čtvrtý use case s plným popisem
+- Roadmapa aktualizována — Envelope přesunuto do hotových
+
+---
+
 ## [1.0.1] — 2026-03-20
 
 ### Added

@@ -298,20 +298,41 @@ $html = preg_replace(
 );
 ```
 
-**AI agent:**
+**AI agent fills envelope slots:**
+```bash
+# 1. Pack envelope with slots + natural language instructions
+POST /envelope
+{
+  "manifest": { "parts": [{
+    "id": "compose", "type": "text/yaml", "slot": true,
+    "fill_prompt": "docker-compose for Node.js + PostgreSQL 16 + Redis"
+  }]}
+}
+
+# 2. LLM generates content, returns draft for review
+POST /envelope/ENV-xxx/fill-ai
+{ "slot_id": "compose", "auto_fill": false }
+→ { "status": "draft", "draft": "version: '3.8'\nservices: ..." }
+
+# 3. Apply (or auto_fill: true to skip review)
+POST /envelope/ENV-xxx/fill
+{ "slot_id": "compose", "data": "..." }
 ```
-Give any LLM the openapi.yaml — it immediately knows how to:
-- render documents for your users
-- create transfer packages
-- validate and sign documents
-No prompt engineering. The spec is the instruction.
+
+```bash
+# Configure your LLM (OpenAI-compatible, any model)
+LLM_BASE_URL=https://your-llm/v1
+LLM_API_KEY=your-key
+LLM_MODEL=qwen2.5-coder:32b
+docker run -p 3000:3000 -e LLM_BASE_URL -e LLM_API_KEY -e LLM_MODEL \
+  ghcr.io/mastervector-svg/polydoc:latest
 ```
 
 ---
 
 ## Roadmap
 
-### v1.0 (current)
+### v1.0
 - [x] Core format spec (header, metadata, content, visuals, logic)
 - [x] Multilingual support (`LocalizedString` — `{"en":"...","cs":"..."}`)
 - [x] Section types: header, party, table, image, rich_text, checklist
@@ -325,15 +346,21 @@ No prompt engineering. The spec is the instruction.
 - [x] Lazy load spec (inline / on-demand modes)
 - [x] Human/Agent view toggle (demo)
 
-### v1.1
+### v1.1 (current)
+- [x] Envelope format (`doc_type: "envelope"`) — any file, any MIME type, one HTML
+- [x] Envelope Slots — collaborative filling, `fill_prompt`, `workspace://`
+- [x] `POST /envelope/:id/fill` — fill slot via API
+- [x] `POST /envelope/:id/fill-ai` — **LLM agent fills slot** (OpenAI-compatible, any model)
+- [x] VS Code extension scaffold — sidebar, fill, pack, preview, scheduled fill
 - [ ] Shared interpreter on CDN (`poly-interpreter.js`)
 - [ ] SubtleCrypto signature verification (browser)
 - [ ] `npx polydoc render invoice.json` CLI
 - [ ] DOMPurify integration for `rich_text`
 - [ ] More themes (dark, classic, minimal)
-- [ ] Envelope format (`doc_type: "envelope"`) — cryptographic wrapper for any content
+- [ ] VS Code extension — publish to Marketplace
 
 ### v2.0
+- [ ] MCP server — PolyDoc as MCP tool for AI agents (`fill_slot`, `pack_envelope`, `list_envelopes`)
 - [ ] WYSIWYG editor
 - [ ] Official integrations (Lovable, Cursor, n8n)
 - [ ] Offline-first (Service Worker)
