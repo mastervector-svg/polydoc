@@ -330,54 +330,83 @@ Mail verze je staticky vyrendrovaná kopie bez JS.
 
 ---
 
-## 11. Komprese (`header.compression`)
+## 11. Komprese — selektivní DEFLATE na úrovni sekce
 
-PolyDoc podporuje inline DEFLATE kompresi datového payloadu. Používá se zejména v transfer formátu pro velké položky (> 10 KB), ale může být aplikována i na celý obsah dokumentu.
+Komprese v PolyDocu je **per-sekce vlastnost**, ne globální mód dokumentu.
+Hlavička, metadata, souhrny a malé bloky zůstávají čitelné jako JSON.
+Velké bloky (obrázky v base64, knowledge base, přílohy, velké tabulky) se komprimují inline.
 
-### Formát v hlavičce
+Kouzlo je v tom, že dokument zůstává inspektovatelný pouhým pohledem — vidíš hlavičku,
+strany, částky — ale velká data jsou úsporně uložena vedle nich ve stejném souboru.
+
+### Globální nastavení v hlavičce (hint pro generátory)
 
 ```json
 {
   "header": {
     "format": "poly/1.0",
-    "doc_id": "TRANSFER-2026-001",
-    "doc_type": "transfer",
+    "doc_id": "INV-2026-001",
     "compression": {
       "algorithm": "deflate",
-      "encoding": "base64",
-      "original_size": 52480,
-      "compressed_size": 9120
+      "threshold": 10240
     }
   }
 }
 ```
 
-### Pravidla komprese
+`threshold` říká generátoru: *"pole, jejichž serializovaná velikost překročí tento počet bajtů, zkomprimuj automaticky"*. Výchozí hodnota je **10 240 B (10 KB)**. Hlavička a malé sekce se nikdy nekomprimují.
 
-| Pravidlo | Hodnota |
-|----------|---------|
-| Algoritmus | DEFLATE (RFC 1951) |
-| Kódování výstupu | Base64 |
-| Threshold (auto-compress) | 10 KB |
-| Pole `data` při kompresi | `base64(deflate(JSON.stringify(payload)))` |
+### Jak vypadá komprimovaná sekce
 
-Položky pod 10 KB zůstávají jako čitelný JSON (nekomprimované).
-Položky nad 10 KB se automaticky komprimují. Interpret pozná kompresi podle pole `compressed: true`.
+Jakákoliv sekce v `content.sections` nebo položka v transfer payloadu může nést komprimovaná data:
 
-### Příklad komprimované položky (transfer)
+```json
+{
+  "type": "image",
+  "alt": "Fotografie nemovitosti",
+  "compressed": true,
+  "data": "eJyNkstqwzAQRff...",
+  "original_size": 52480,
+  "compressed_size": 9120
+}
+```
 
 ```json
 {
   "type": "knowledge_base",
   "id": "kb-main",
+  "title": "Znalostní báze projektu",
   "compressed": true,
-  "data": "eJyNkstqwzAQRff...",
-  "original_size": 45230,
-  "compressed_size": 8940
+  "data": "eJyVkMtqwzAQRff...",
+  "original_size": 145000,
+  "compressed_size": 28300
 }
 ```
 
-Decompress: `JSON.parse(inflateSync(Buffer.from(data, 'base64')).toString('utf-8'))`
+Nekomprimovaná sekce přitom vypadá normálně — `compressed` pole chybí nebo je `false`:
+
+```json
+{
+  "type": "party",
+  "role": "supplier",
+  "data": { "name": "Jan Novák s.r.o.", "address": "Brno" }
+}
+```
+
+### Pravidla
+
+| Pravidlo | Hodnota |
+|----------|---------|
+| Algoritmus | DEFLATE (RFC 1951) |
+| Kódování | Base64 |
+| Výchozí threshold | 10 240 B |
+| Příznak | `"compressed": true` na sekci/položce |
+| Obsah | `"data": base64(deflate(JSON.stringify(original_data)))` |
+| Metadata | `"original_size"`, `"compressed_size"` (volitelné, pro debugování) |
+| Co se nikdy nekomprimuje | `header`, `metadata`, souhrny, `footer` tabulky |
+
+Decompress (Node.js): `JSON.parse(inflateSync(Buffer.from(data, 'base64')).toString('utf-8'))`
+Decompress (browser): `DecompressionStream('deflate')` + `TextDecoder`
 
 ---
 
@@ -439,54 +468,109 @@ WebCrypto API (SubtleCrypto) dešifruje obsah přímo v prohlížeči
 
 ---
 
-## 13. Lazy load sekcí
+## 13. Lazy load — selektivní načítání sekcí
 
-Velké sekce (obrázky, přílohy, long-form obsah) lze označit jako lazy — interpret je nenačte při prvním renderu, ale až na vyžádání (scroll nebo klik).
+Lazy load je stejně jako komprese **per-sekce vlastnost**, nezávislá na formátu výstupu.
+Sekce s `"lazy": true` se při prvním renderu nevykreslí — místo nich se zobrazí placeholder.
+Obsah se načte až na vyžádání (scroll do view nebo klik).
 
-### Lazy sekce v JSON
+### Dva módy lazy load
 
-```json
-{
-  "type": "image",
-  "lazy": true,
-  "src": "https://cdn.example.cz/foto-velke.jpg",
-  "alt": "Fotografie nemovitosti",
-  "width": "100%"
-}
-```
+#### `"lazy_mode": "on-demand"` (výchozí)
+Data se **vždy táhnou ze `src`** při každém vyžádání. Nikdy se nevkládají do dokumentu.
+Vhodné pro: živý stav, smluvní podmínky (vždy aktuální verze), externí datasety.
 
 ```json
 {
   "type": "rich_text",
   "lazy": true,
-  "lazy_label": "Zobrazit úplné podmínky...",
-  "src": "https://api.example.cz/doc/CONTRACT-001/terms",
-  "html": null
+  "lazy_mode": "on-demand",
+  "lazy_label": "Zobrazit smluvní podmínky...",
+  "src": "https://api.example.cz/terms/v2"
 }
 ```
 
-### Pravidla lazy load
+#### `"lazy_mode": "inline"`
+Data se **dotáhnou jednou** a vloží přímo do DOM (a mohou být uložena zpět do dokumentu).
+Vhodné pro: velké obrázky, knowledge base, přílohy — obsah se chce mít offline.
 
-| Pravidlo | Hodnota |
-|----------|---------|
-| Pole | `"lazy": true` na sekci |
-| Trigger | `IntersectionObserver` při scroll, nebo klik na placeholder |
-| `lazy_label` | Text placeholderu (volitelné, default: "Načíst...") |
-| `src` | URL pro fetch obsahu (pro `rich_text`, externí `image`) |
-| Fallback | Pokud `src` není dostupný, zobrazí se `lazy_label` jako statický text |
-
-### Interpreter behavior
-
-```javascript
-// Interpreter při lazy sekci vyrendruje placeholder:
-<div class="poly-lazy-placeholder" data-src="..." data-type="rich_text">
-  <button>Načíst...</button>
-</div>
-
-// Po kliknutí / scroll do view fetchne src a nahradí placeholder obsahem
+```json
+{
+  "type": "image",
+  "lazy": true,
+  "lazy_mode": "inline",
+  "src": "https://cdn.example.cz/foto-hd.jpg",
+  "alt": "Fotografie nemovitosti — HD verze",
+  "width": "100%"
+}
 ```
 
-**Mail verze:** Lazy sekce se v mail verzi renderují staticky (bez JS) — zobrazí se `lazy_label` jako text s odkazem na full verzi.
+Přepnutí módu = jeden parametr. Chování se změní, `src` zůstane stejný.
+
+### Threshold pro automatický lazy load
+
+V hlavičce lze definovat práh — sekce nad touto velikostí dostane `lazy: true` automaticky:
+
+```json
+{
+  "header": {
+    "lazy": {
+      "threshold": 51200,
+      "default_mode": "on-demand"
+    }
+  }
+}
+```
+
+Výchozí threshold: **50 KB** (pro sekce bez explicitního `lazy` pole).
+Generátor přidá `lazy: true` a `lazy_mode` podle `default_mode` automaticky při tvorbě dokumentu.
+
+### Kombinace s kompresí
+
+Lazy a komprese jsou na sobě nezávislé a lze je kombinovat:
+
+```json
+{
+  "type": "knowledge_base",
+  "lazy": true,
+  "lazy_mode": "inline",
+  "lazy_label": "Načíst znalostní bázi...",
+  "src": "https://api.example.cz/kb/main",
+  "compressed": true,
+  "data": "eJyVkMtq...",
+  "original_size": 145000,
+  "compressed_size": 28300
+}
+```
+
+Interpret nejdříve zdecomprimuje `data`, pak zobrazí obsah. `src` slouží jako fallback pokud `data` chybí.
+
+### Pravidla
+
+| Vlastnost | Popis | Výchozí |
+|-----------|-------|---------|
+| `lazy` | Aktivuje lazy load pro sekci | `false` |
+| `lazy_mode` | `"on-demand"` nebo `"inline"` | `"on-demand"` |
+| `lazy_label` | Text placeholderu | `"Načíst..."` |
+| `src` | URL zdroje obsahu | — |
+| `header.lazy.threshold` | Práh pro auto-lazy (bajty) | `51200` (50 KB) |
+| `header.lazy.default_mode` | Výchozí mód pro auto-lazy | `"on-demand"` |
+
+### Chování interpreteru
+
+```
+Render sekce:
+  lazy: false  → vyrendruje okamžitě z dat v dokumentu
+  lazy: true   → vyrendruje placeholder div, připne IntersectionObserver
+
+Trigger (scroll do view nebo klik):
+  lazy_mode: on-demand  → fetch(src) při každém zobrazení, nikdy neukládá
+  lazy_mode: inline     → fetch(src) jednou, nahradí placeholder, data vloží do DOM
+                          volitelně: updateDoc() uloží data zpět do raw-data JSON
+```
+
+**Mail verze:** `lazy: true` sekce se renderují jako statický placeholder text (`lazy_label`)
+s odkazem na full verzi. JS není k dispozici — full verze obstará samotné načtení.
 
 ---
 
