@@ -524,4 +524,194 @@ Zákazník:       branding.zip (slot → fill jejich assety)
 
 ---
 
+## §11 Fill Providers — on-demand slot filling by external service
+
+A slot with `fill.mode: "on-demand"` can declare a **provider** — an external service that fills the slot automatically when requested. The slot content is fetched live from the provider, cached for `cache_ttl` seconds, and stored exactly like a manually filled slot.
+
+This enables envelopes where parts are **always current**: land registry extracts, company filings, exchange rates, CAD renderings, satellite imagery — anything with an API.
+
+### 11.1 Slot declaration
+
+```json
+{
+  "id": "company-extract",
+  "type": "application/pdf",
+  "label": { "en": "Company extract", "de": "Handelsregisterauszug", "cs": "Výpis z obchodního rejstříku" },
+  "slot": true,
+  "fill": {
+    "mode": "on-demand",
+    "src": "https://providers.example.com/ares/v1/extract?ico=12345678&format=pdf",
+    "auth": "bearer",
+    "returns": "application/pdf",
+    "cache_ttl": 604800,
+    "review_required": false
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `fill.mode` | `"on-demand"` | Slot is filled by calling `fill.src` |
+| `fill.src` | URI | URL of the provider endpoint, or a registered scheme (see §11.3) |
+| `fill.auth` | `"none"` \| `"bearer"` \| `"api_key"` \| `"oauth2"` | How the server authenticates to the provider |
+| `fill.returns` | MIME type | Expected response content type |
+| `fill.cache_ttl` | integer (seconds) | How long the filled content is valid. `0` = always refetch |
+| `fill.review_required` | boolean | If `true`, filled content waits for human approval before `slot_state → filled` |
+| `fill.params` | object | Static parameters merged into the provider call |
+
+### 11.2 Slot states for on-demand slots
+
+```
+empty → filling → filled
+              ↓
+           stale  (cache_ttl elapsed — content still readable, marked outdated)
+              ↓
+           filling → filled  (re-fetched)
+```
+
+`slot_state: "stale"` means the data exists but `filled_at + cache_ttl < now`. The interpreter shows a warning badge. The server can re-fill automatically on the next `GET /envelope/:id?fill=live`.
+
+### 11.3 Provider URI schemes
+
+Implementations MAY support short URI schemes as aliases for well-known provider endpoints. This is optional — a plain HTTPS URL always works.
+
+```
+katastr://parcela/{parcel_id}         → CZ: ČÚZK land registry (PDF extract)
+ares://ico/{ico}                      → CZ: ARES company registry (JSON/PDF)
+cob://company/{jurisdiction}/{id}     → Companies House (UK), KVK (NL), Handelsregister (DE), etc.
+lei://entity/{lei_code}               → Global LEI (Legal Entity Identifier) — GLEIF
+vat://eu/{country}/{vat_number}       → EU VAT registry (VIES)
+osm://map/{lat},{lon}/{zoom}          → OpenStreetMap tile / static map image
+cad://project/{id}/render             → CAD/BIM application fill (returns image/png or model)
+```
+
+Schemes are resolved server-side by a **provider registry** — a simple JSON config that maps scheme → endpoint template. Operators can register custom schemes for internal systems (ERP, DMS, GIS).
+
+Example provider registry entry:
+
+```json
+{
+  "scheme": "cob",
+  "description": "Companies registry — multi-jurisdiction",
+  "endpoint": "https://providers.polydoc.example/company/v1/{jurisdiction}/{id}",
+  "auth": "api_key",
+  "returns": "application/pdf",
+  "jurisdictions": ["uk", "de", "nl", "fr", "pl", "sk", "cz", "at"]
+}
+```
+
+### 11.4 International examples
+
+The same envelope structure works across jurisdictions — only the `fill.src` changes.
+
+**Real estate transaction (CZ + DE + UK)**
+
+| Part | Provider | `fill.src` | `cache_ttl` |
+|------|----------|------------|-------------|
+| Land registry extract | ČÚZK (CZ) | `katastr://parcela/1234/5` | 86 400 s |
+| Grundbuchauszug | Grundbuch (DE) | `cob://company/de/HRB12345` | 86 400 s |
+| Title register | HM Land Registry (UK) | `https://api.example.com/hmrc/title/EGL123456` | 86 400 s |
+| Floor plan preview | CAD service | `cad://project/proj-42/render?view=floor&format=png` | 0 (always fresh) |
+| Company extract | ARES (CZ) / LEI | `lei://entity/529900T8BM49AURSDO55` | 604 800 s |
+| VAT status | EU VIES | `vat://eu/CZ/CZ12345678` | 3 600 s |
+
+**Permit application (building / planning)**
+
+```json
+{
+  "manifest": {
+    "label": { "en": "Building permit package", "cs": "Stavební povolení", "de": "Baugenehmigung" },
+    "parts": [
+      {
+        "id": "cadastral-map",
+        "type": "image/png",
+        "label": { "en": "Cadastral map", "cs": "Katastrální mapa" },
+        "slot": true,
+        "fill": { "mode": "on-demand", "src": "katastr://mapa/1234/5?format=png", "cache_ttl": 86400 }
+      },
+      {
+        "id": "floor-plan",
+        "type": "image/png",
+        "label": { "en": "Floor plan", "cs": "Půdorys", "de": "Grundriss" },
+        "slot": true,
+        "fill": {
+          "mode": "on-demand",
+          "src": "cad://project/bp-2026-042/render?view=floor&scale=1:100&format=png",
+          "cache_ttl": 0,
+          "review_required": true
+        }
+      },
+      {
+        "id": "technical-report",
+        "type": "text/markdown",
+        "label": { "en": "Technical report", "cs": "Technická zpráva" },
+        "slot": true,
+        "fill_prompt": "Generate technical report from floor plan and cadastral data",
+        "fill": { "mode": "on-demand", "src": "ai://slot/technical-report", "cache_ttl": 0 }
+      },
+      {
+        "id": "authority-stamp",
+        "type": "application/x-polydoc-stamp",
+        "label": { "en": "Authority approval stamp", "cs": "Razítko úřadu" },
+        "slot": true,
+        "assigned_to": { "key_hint": "sha256:urad-stavebni..." },
+        "fill": { "mode": "manual", "review_required": true }
+      }
+    ]
+  }
+}
+```
+
+The authority fills only the `authority-stamp` slot — the rest was fetched from registries and the CAD tool. The manifest signature covers all part hashes, so the stamp confirms the authority saw **exactly this version** of the drawings and extracts.
+
+**Financial due diligence (EU cross-border)**
+
+| Part | Provider | Notes |
+|------|----------|-------|
+| Company extract (target) | LEI / local registry | `lei://entity/{lei}` |
+| Beneficial owners | OpenCorporates | `https://api.opencorporates.com/companies/{jurisdiction}/{id}` |
+| VAT confirmation | EU VIES | `vat://eu/{cc}/{vat}` |
+| Exchange rate snapshot | ECB | `https://api.frankfurter.app/latest?from=EUR&to=CZK,PLN,HUF` |
+| Sanctions check | OpenSanctions | `https://api.opensanctions.org/match/default` |
+| Credit rating | internal ERP | `erp://creditcheck/{customer_id}` |
+
+None of these need a bespoke integration — each is a URL the server calls, the response is base64-encoded, stored as a filled slot, and rendered in the browser.
+
+### 11.5 Server API — live fill endpoint
+
+```
+GET /envelope/:doc_id?fill=live
+```
+
+When `fill=live` is set, the server iterates all unfilled or stale on-demand slots, calls their `fill.src`, stores the response, and returns the updated HTML. Callers can also trigger a single slot:
+
+```
+POST /envelope/:doc_id/fill-provider
+{
+  "slot_id": "cadastral-map"   // optional — if omitted, fill all on-demand slots
+}
+```
+
+Response:
+
+```json
+{
+  "ok": true,
+  "filled": ["cadastral-map", "company-extract"],
+  "skipped": ["authority-stamp"],
+  "stale_refreshed": ["floor-plan"],
+  "html_url": "/output/ENV-xxx-envelope.html"
+}
+```
+
+### 11.6 Security considerations
+
+- Provider URLs are server-side only — never exposed to the browser
+- `auth` credentials (tokens, keys) are stored in server config, not in the envelope HTML
+- `fill.src` with custom schemes (`katastr://`, `cob://`) are resolved only on the server — a crafted envelope cannot redirect calls to arbitrary hosts unless the operator registers the scheme
+- Response MIME type is validated against `fill.returns` before storing
+- `cache_ttl: 0` content is refetched but the previous version remains in the envelope until the new fetch succeeds (fail-safe)
+
+---
+
 *PolyDoc Envelope v1.0 · MIT licence · 2026-03-20*
