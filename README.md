@@ -71,7 +71,7 @@ A single `.html` file that is simultaneously:
 
 ---
 
-## Three Use Cases
+## Four Use Cases
 
 ### 1. Transactional Documents
 Invoices, confirmations, offers, contracts.
@@ -98,6 +98,41 @@ Lovable export → polydoc-transfer.html → Cursor import
                                        → open in browser to inspect
                                        → feed to Claude as context
 ```
+
+### 4. Envelope — Universal Cryptographic Container
+
+This is the one people don't see coming.
+
+A PolyDoc Envelope is a **single `.html` file** that can contain **literally anything**:
+
+```
+📄 INSTALL.md              text/markdown        ← human reads this in browser
+🤖 agent-config.json       application/json     ← AI agent reads this
+🐳 docker-compose.yml      text/plain           ← ops team deploys this
+📦 compiler-linux.tar.gz   application/x-tar    ← downloads and installs
+📑 license.pdf             application/pdf      ← legal signs this
+📎 nested.html             application/polydoc  ← another PolyDoc inside
+```
+
+Open it in a browser → you see the manifest: what's inside, how big, who signed it.
+Click a part → it opens inline (markdown rendered, JSON highlighted, image shown).
+Binary files → download button. The envelope never changes, only what you open.
+
+**The manifest is always readable — without a key, without an account, without anything.**
+You can verify the sender's signature and confirm receipt before opening a single file.
+
+```
+Sender signs manifest (hash of each part) → sends .html by email
+Recipient opens browser                   → sees manifest, verifies signature
+Recipient opens only what they need       → encrypted parts need the key
+AI agent reads manifest                   → decides what to fetch and process
+```
+
+Multi-recipient: Alice gets parts 1 and 3. Bob gets all parts. Neither knows the other exists. Server only sees SHA256 key hints — never identities.
+
+This is what secure email should have been. Except it's a plain HTML file.
+
+[→ Live demo](https://mastervector-svg.github.io/polydoc/examples/envelope-demo.html) · [→ Spec](spec/POLYDOC_ENVELOPE.md)
 
 ---
 
