@@ -1,0 +1,126 @@
+{
+  "name": "polydoc",
+  "displayName": "PolyDoc",
+  "description": "PolyDoc format support — preview, envelope slots, workspace fill",
+  "version": "0.1.0",
+  "publisher": "mastervector-svg",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mastervector-svg/polydoc"
+  },
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other", "Formatters", "Visualization"],
+  "keywords": ["polydoc", "envelope", "document", "ai", "json"],
+  "icon": "icon.png",
+  "activationEvents": [
+    "onLanguage:html",
+    "workspaceContains:**/*.poly.html"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "polydoc.preview",
+        "title": "PolyDoc: Preview Document",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "polydoc.fillSlot",
+        "title": "PolyDoc: Fill Slot from Workspace"
+      },
+      {
+        "command": "polydoc.fillAllSlots",
+        "title": "PolyDoc: Fill All My Slots"
+      },
+      {
+        "command": "polydoc.packEnvelope",
+        "title": "PolyDoc: Pack Envelope from Workspace",
+        "icon": "$(package)"
+      },
+      {
+        "command": "polydoc.addToEnvelope",
+        "title": "PolyDoc: Add to Envelope"
+      },
+      {
+        "command": "polydoc.refreshSlot",
+        "title": "PolyDoc: Refresh Slot (on-demand)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "polydoc.addToEnvelope",
+          "group": "polydoc",
+          "when": "!explorerResourceIsFolder"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "polydoc.preview",
+          "when": "resourceExtname == .html && polydoc.isPolyDoc",
+          "group": "navigation"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "polydocEnvelopes",
+          "name": "PolyDoc Envelopes",
+          "icon": "$(mail)",
+          "when": "polydoc.hasEnvelopes"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "polydocEnvelopes",
+        "contents": "No PolyDoc envelopes found in workspace.\n[Pack Envelope](command:polydoc.packEnvelope)"
+      }
+    ],
+    "configuration": {
+      "title": "PolyDoc",
+      "properties": {
+        "polydoc.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "PolyDoc render engine URL (POST /render, POST /envelope)"
+        },
+        "polydoc.autoDetect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-detect PolyDoc files in workspace"
+        },
+        "polydoc.keyHint": {
+          "type": "string",
+          "default": "",
+          "description": "Your SHA256 key hint for slot assignment (sha256:...)"
+        },
+        "polydoc.scheduledFillEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable scheduled slot fills (requires extension host running)"
+        }
+      }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": "*.poly.json",
+        "url": "https://github.com/mastervector-svg/polydoc/raw/master/schema/poly-v1.0.schema.json"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

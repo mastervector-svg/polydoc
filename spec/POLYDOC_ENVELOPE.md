@@ -361,4 +361,167 @@ signature: ES256 (pokrývá manifest)
 
 ---
 
+## §10 Slots — kolaborativní vyplňování
+
+**Slot** je část obálky, kterou odesílatel definoval ale záměrně nevyplnil. Označuje kdo ji má vyplnit, jakým způsobem a kdy.
+
+### Definice slotu v manifest.parts
+
+```json
+{
+  "id": "infrastructure",
+  "type": "text/yaml",
+  "label": { "en": "Your infrastructure config", "cs": "Vaše infrastruktura" },
+  "slot": true,
+  "assigned_to": { "key_hint": "sha256:recipient_pubkey_hash..." },
+  "workspace_hint": "docker-compose.yml",
+  "fill": {
+    "mode": "manual",
+    "src": null
+  }
+}
+```
+
+Slot s on-demand nebo plánovaným obnovením:
+
+```json
+{
+  "id": "test-results",
+  "type": "application/json",
+  "label": { "en": "Latest test results" },
+  "slot": true,
+  "assigned_to": { "key_hint": "sha256:ci_pipeline_key..." },
+  "fill": {
+    "mode": "scheduled",
+    "schedule": "0 6 * * 1",
+    "src": "https://ci.example.cz/api/test-results/latest.json"
+  }
+}
+```
+
+### Pole slotu
+
+| Pole | Povinné | Popis |
+|------|---------|-------|
+| `slot` | Ano | `true` — označuje část jako slot čekající na vyplnění |
+| `assigned_to.key_hint` | Ne | SHA256 otisk klíče příjemce zodpovědného za vyplnění |
+| `workspace_hint` | Ne | Doporučený název souboru pro propojení s workspace |
+| `fill.mode` | Ano | `manual` / `on-demand` / `scheduled` |
+| `fill.src` | Ne | URL pro automatické načtení obsahu |
+| `fill.schedule` | Ne | Cron výraz pro plánované obnovení |
+
+### Stav slotu
+
+Každý slot v `manifest.parts` může mít stav:
+
+| Stav | Popis |
+|------|-------|
+| `empty` | Slot definován, nevyplněn (výchozí) |
+| `filled` | Část vyplněna, dostupná v `parts[]` |
+| `linked` | Propojeno s workspace nebo URL, čeká na pull |
+| `stale` | `hash_at_fill` neodpovídá aktuálnímu obsahu `fill.src` |
+
+```json
+{
+  "id": "infrastructure",
+  "slot": true,
+  "slot_state": "filled",
+  "filled_by": { "key_hint": "sha256:recipient..." },
+  "filled_at": "2026-03-20T14:30:00Z",
+  "hash_at_fill": "sha256:abc123..."
+}
+```
+
+### Workspace link (`workspace://`)
+
+Příjemce může propojit slot s lokálním souborem ve svém workspace:
+
+```json
+"fill": {
+  "mode": "on-demand",
+  "src": "workspace://docker-compose.yml"
+}
+```
+
+`workspace://` schéma resolvuje nástroj (VS Code extension, CLI) na skutečnou cestu v otevřeném projektu. Při fill operaci:
+1. Přečte aktuální obsah souboru
+2. Spočítá hash
+3. Vloží do `parts[]` jako běžnou část
+4. Aktualizuje `slot_state` na `filled` + `filled_at` timestamp
+
+### Fill API — server endpoint
+
+```
+POST /envelope/{doc_id}/fill
+Authorization: Bearer <api_key>
+
+{
+  "slot_id": "infrastructure",
+  "data": "base64(content)",
+  "compressed": false,
+  "signed_by": { "key_hint": "sha256:..." }
+}
+
+→ {
+    "ok": true,
+    "doc_id": "ENV-2026-001",
+    "slot_id": "infrastructure",
+    "hash": "sha256:...",
+    "html_url": "/output/ENV-2026-001-envelope.html"
+  }
+```
+
+Server přidá část do `parts[]`, aktualizuje `manifest.parts[].slot_state` a vygeneruje novou verzi HTML.
+
+### Životní cyklus kolaborativní obálky
+
+```
+Odesílatel (architekt):
+  → vytvoří obálku se sloty
+  → vyplní své části (embedded)
+  → sloty přiřadí příjemcům (key_hint)
+  → pošle e-mailem nebo nahraje na sdílené URL
+
+Příjemce (ops team):
+  → otevře v prohlížeči nebo VS Code
+  → vidí: "VAŠE ČÁSTI K VYPLNĚNÍ"
+  → propojí workspace:// nebo zadá data ručně
+  → klikne [Naplnit] → část se vloží do obálky
+  → volitelně podepíše svůj příspěvek
+
+CI pipeline:
+  → POST /envelope/{id}/fill po každém buildu
+  → slot test-results se aktualizuje automaticky
+
+Sdílená URL:
+  → kdokoli otevře → vidí aktuální stav všech částí
+  → scheduled sloty se obnovují dle cron plánu
+  → každý vidí jen části ke kterým má klíč
+```
+
+### Příklady použití
+
+**Deployment balík:**
+```
+Architekt:  INSTALL.md (embedded) + agent-config.json (embedded)
+Ops team:   docker-compose.yml (slot → workspace://) + .env.prod (slot → encrypted)
+CI:         test-results.json (slot → scheduled, každý build)
+```
+
+**Due diligence (M&A):**
+```
+Prodávající: financial-model.xlsx (embedded, encrypted) + info-memo.pdf (embedded)
+Kupující:    nda-signed.pdf (slot → manual fill) + term-sheet.docx (slot → manual fill)
+Právník:     review-notes.md (slot → on-demand, workspace://)
+```
+
+**Předání projektu:**
+```
+Lovable/Cursor: frontend.zip (embedded) + schema.sql (embedded)
+Nový tým:       env-vars.json (slot → fill dle svého prostředí)
+Zákazník:       branding.zip (slot → fill jejich assety)
+```
+
+---
+
 *PolyDoc Envelope v1.0 · MIT licence · 2026-03-20*
