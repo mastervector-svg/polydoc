@@ -66,6 +66,7 @@ A single `.html` file that is simultaneously:
 - ✅ **An API response** — AI agents render and deliver via Channel API
 - ✅ **An email** — static mail version passes every spam filter and firewall
 - ✅ **A transfer container** — ship entire project configs, agent setups, knowledge bases
+- ✅ **A cryptographic envelope** — wrap any files, sign the manifest, encrypt parts independently, send as one HTML file
 
 ---
 
@@ -185,6 +186,7 @@ polydoc/
 ├── spec/
 │   ├── POLYDOC_SPEC.md          ← format specification v1.0
 │   ├── POLYDOC_TRANSFER.md      ← transfer format specification
+│   ├── POLYDOC_ENVELOPE.md      ← envelope format specification
 │   ├── DEPLOYMENT_REALTY.md     ← deployment guide: real estate portal
 │   └── openapi.yaml             ← Channel API (OpenAPI 3.1)
 │
@@ -293,6 +295,7 @@ No prompt engineering. The spec is the instruction.
 - [ ] `npx polydoc render invoice.json` CLI
 - [ ] DOMPurify integration for `rich_text`
 - [ ] More themes (dark, classic, minimal)
+- [ ] Envelope format (`doc_type: "envelope"`) — cryptographic wrapper for any content
 
 ### v2.0
 - [ ] WYSIWYG editor

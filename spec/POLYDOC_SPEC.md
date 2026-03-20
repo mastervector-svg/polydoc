@@ -589,12 +589,21 @@ s odkazem na full verzi. JS není k dispozici — full verze obstará samotné n
 - [ ] SubtleCrypto ověření podpisu
 - [ ] Více vizuálních témat
 - [ ] DOMPurify integrace pro rich_text
+- [ ] Envelope formát (`doc_type: "envelope"`) — kryptografická obálka pro libovolný obsah
 
 ### v2.0
 - [ ] Spec na GitHubu (`github.com/polydoc/spec`)
 - [ ] JSON Schema validátor
 - [ ] WYSIWYG editor v IS
 - [ ] Offline-first (Service Worker)
+
+---
+
+## 16. Envelope formát (`doc_type: "envelope"`)
+
+Pro přenos více souborů, kryptografické zásilky a multi-recipient scénáře slouží Envelope formát. Obálka neobsahuje vizuální sekce — místo nich nese `parts[]` s libovolným obsahem. Hlavička a manifest jsou vždy čitelné; obsah je volitelně šifrovaný, komprimovaný nebo lazy-načítaný. Podpis pokrývá manifest (hash každé části), nikoli obsah samotný — příjemce může potvrdit příjem zásilky bez otevření jediné části.
+
+Viz [POLYDOC_ENVELOPE.md](POLYDOC_ENVELOPE.md) pro kompletní specifikaci.
 
 ---
 

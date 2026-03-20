@@ -7,6 +7,7 @@ import validateRouter from './routes/validate.js';
 import schemaRouter from './routes/schema.js';
 import channelRouter from './routes/channel.js';
 import outputRouter from './routes/output.js';
+import envelopeRouter from './routes/envelope.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,6 +23,7 @@ app.use('/validate', validateRouter);
 app.use('/schema', schemaRouter);
 app.use('/.well-known', channelRouter);
 app.use('/output', outputRouter);
+app.use('/envelope', envelopeRouter);
 
 // Health check
 app.get('/health', (_req, res) => {
