@@ -1,74 +1,9 @@
-import { Router } from 'express';
-import { createHash, randomUUID } from 'crypto';
-import { writeFile, mkdir } from 'fs/promises';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { compressPayload } from '../engine.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = join(__dirname, '..', 'output');
-
-const router = Router();
-
-// ── Helpers ────────────────────────────────────────────────────
-
-/**
- * Compute SHA-256 hash of a string, returns "sha256:<hex>"
- */
-function sha256(str) {
-  return 'sha256:' + createHash('sha256').update(str, 'utf-8').digest('hex');
-}
-
-/**
- * Return an icon string for a given MIME type.
- */
-function iconForType(mimeType, encrypted, lazy) {
-  if (encrypted) return '🔒';
-  if (lazy) return '⏳';
-  if (!mimeType) return '📁';
-  if (mimeType.startsWith('image/')) return '🖼️';
-  if (mimeType === 'text/markdown') return '📄';
-  if (mimeType === 'application/json') return '📋';
-  if (mimeType === 'application/zip') return '📦';
-  if (mimeType === 'application/polydoc') return '📎';
-  return '📁';
-}
-
-/**
- * Format bytes as human-readable string.
- */
-function fmtSize(bytes) {
-  if (!bytes || bytes === 0) return '—';
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-/**
- * Resolve a LocalizedString to a plain string (English preferred).
- */
-function resolveLabel(val) {
-  if (!val) return '';
-  if (typeof val === 'string') return val;
-  if (typeof val === 'object') return val.en ?? val.cs ?? Object.values(val)[0] ?? '';
-  return String(val);
-}
-
-// ── Envelope HTML template ─────────────────────────────────────
-
-function buildEnvelopeHtml(envelopeJson) {
-  const title = resolveLabel(envelopeJson.manifest?.label) || envelopeJson.header?.doc_id || 'PolyDoc Envelope';
-  const mailPartHtml = envelopeJson.mail_part?.data || '';
-  const jsonStr = JSON.stringify(envelopeJson, null, 2)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e');
-
-  return `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title.replace(/</g, '&lt;').replace(/>/g, '&gt;')} — PolyDoc Envelope</title>
+  <title>Invoice Package · INV-2026-042 — PolyDoc Envelope</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -362,7 +297,91 @@ function buildEnvelopeHtml(envelopeJson) {
   </div>
 
   <script type="application/poly+json" id="raw-data">
-${jsonStr}
+{
+  "header": {
+    "format": "poly/1.0",
+    "doc_id": "ENV-20260320-2C8CC8DA",
+    "doc_type": "envelope",
+    "created": "2026-03-20T17:36:32.501Z"
+  },
+  "manifest": {
+    "label": {
+      "en": "Invoice Package · INV-2026-042",
+      "cs": "Balík: Faktura INV-2026-042"
+    },
+    "sender": {
+      "hint": "sha256:4a7f2c9d1e3b8a5f6c2d4e1b9a7f3c5d"
+    },
+    "recipients": [
+      {
+        "key_hint": "sha256:9b3e1a7f2c5d4e8b6a3f1c9d7e2b5a4f",
+        "parts": [
+          "cover-letter",
+          "invoice",
+          "terms"
+        ]
+      }
+    ],
+    "parts": [
+      {
+        "id": "cover-letter",
+        "type": "text/markdown",
+        "label": {
+          "en": "Cover letter",
+          "cs": "Průvodní dopis"
+        },
+        "compressed": false,
+        "encrypted": false,
+        "size_original": 465,
+        "size_stored": 620,
+        "hash": "sha256:b2d9129258244bcfa01c5481e2fbb8b4ec9aea4a0b3e832d788d4b210efd5b55"
+      },
+      {
+        "id": "invoice",
+        "type": "application/json",
+        "label": {
+          "en": "Invoice (PolyDoc)",
+          "cs": "Faktura (PolyDoc)"
+        },
+        "compressed": false,
+        "encrypted": false,
+        "size_original": 766,
+        "size_stored": 1024,
+        "hash": "sha256:6270c547c3aa39cf7935bac2b37d8c74bde9a5ac0e87ec7d26b19ff67b65aecb"
+      },
+      {
+        "id": "terms",
+        "type": "text/plain",
+        "label": {
+          "en": "Terms & payment info",
+          "cs": "Platební podmínky"
+        },
+        "compressed": false,
+        "encrypted": false,
+        "size_original": 168,
+        "size_stored": 224,
+        "hash": "sha256:944b4a2e7c759ee747030c5f15ee7914a90389670387f27241e1f4e4b578ec75"
+      }
+    ]
+  },
+  "parts": [
+    {
+      "id": "cover-letter",
+      "compressed": false,
+      "data": "IyBJbnZvaWNlIElOVi0yMDI2LTA0MgoKRGVhciBjbGllbnQsCgpQbGVhc2UgZmluZCBlbmNsb3NlZCB0aGUgaW52b2ljZSBmb3IgY29uc3VsdGluZyBzZXJ2aWNlcyByZW5kZXJlZCBpbiBNYXJjaCAyMDI2LgoKIyMgU3VtbWFyeQoKLSAqKlNlcnZpY2VzKio6IEFJIHdvcmtmbG93IGRlc2lnbiAmIGltcGxlbWVudGF0aW9uCi0gKipQZXJpb2QqKjogTWFyY2ggMjAyNgotICoqQW1vdW50Kio6IDQ4IDUwMCBDWksgKGV4Y2wuIFZBVCkKLSAqKkR1ZSBkYXRlKio6IDIwMjYtMDQtMTAKClBheW1lbnQgZGV0YWlscyBhcmUgaW4gdGhlIGF0dGFjaGVkIGludm9pY2UuIElmIHlvdSBoYXZlIHF1ZXN0aW9ucywgcGxlYXNlIHJlcGx5LgoKVGhhbmsgeW91IGZvciB5b3VyIGJ1c2luZXNzLgoKLS0tCipUaGlzIHBhY2thZ2Ugd2FzIHNpZ25lZC4gVmVyaWZ5IHJlY2VpcHQgd2l0aG91dCBvcGVuaW5nIGFueSBhdHRhY2htZW50cy4q"
+    },
+    {
+      "id": "invoice",
+      "compressed": false,
+      "data": "eyJoZWFkZXIiOnsiZm9ybWF0IjoicG9seS8xLjAiLCJkb2NfaWQiOiJJTlYtMjAyNi0wNDIiLCJkb2NfdHlwZSI6Imludm9pY2UifSwibWV0YWRhdGEiOnsidGl0bGUiOnsiZW4iOiJJbnZvaWNlIiwiY3MiOiJGYWt0dXJhIn0sImxhbmd1YWdlIjoiZW4ifSwiY29udGVudCI6eyJ0eXBlIjoiZG9jdW1lbnQiLCJzZWN0aW9ucyI6W3sidHlwZSI6InBhcnR5Iiwicm9sZSI6InN1cHBsaWVyIiwiZGF0YSI6eyJuYW1lIjoiTWFzdGVyVmVjdG9yIHMuci5vLiIsImlkIjoiQ1oxMjM0NTY3OCIsImFkZHJlc3MiOiJOw6FtxJtzdMOtIFN2b2JvZHkgMSwgUHJhaGEgMSIsImVtYWlsIjoiaW5mb0BtYXN0ZXJ2ZWN0b3IuY3oifX0seyJ0eXBlIjoicGFydHkiLCJyb2xlIjoiY2xpZW50IiwiZGF0YSI6eyJuYW1lIjoiQWNtZSBDb3JwIGEucy4iLCJpZCI6IkNaODc2NTQzMjEiLCJhZGRyZXNzIjoiVsOhY2xhdnNrw6kgbsOhbcSbc3TDrSAxMCwgUHJhaGEgMSJ9fSx7InR5cGUiOiJ0YWJsZSIsImNvbHVtbnMiOlsiRGVzY3JpcHRpb24iLCJRdHkiLCJVbml0IHByaWNlIiwiVG90YWwiXSwicm93cyI6W1siQUkgd29ya2Zsb3cgZGVzaWduIiwiNDBoIiwiODUwIENaSyIsIjM0IDAwMCBDWksiXSxbIkltcGxlbWVudGF0aW9uIGNvbnN1bHRpbmciLCIxN2giLCI4NTAgQ1pLIiwiMTQgNTAwIENaSyJdXSwiZm9vdGVyIjp7InN1YnRvdGFsIjoiNDggNTAwIENaSyIsInZhdF9yYXRlIjoiMjElIiwidmF0IjoiMTAgMTg1IENaSyIsInRvdGFsIjoiNTggNjg1IENaSyJ9fV19fQ=="
+    },
+    {
+      "id": "terms",
+      "compressed": false,
+      "data": "UEFZTUVOVCBURVJNUwoKQmFuazogxIxlc2vDoSBzcG/FmWl0ZWxuYSBhLnMuCklCQU46IENaNTUgMDgwMCAwMDAwIDAwMTIgMzQ1NiA3ODkwCkJJQzogR0lCQUNaUFgKCkR1ZTogMjAyNi0wNC0xMCAgfCAgVlM6IDIwMjYwNDIKTGF0ZSBmZWU6IDAuMDUlL2RheS4gQ3plY2ggbGF3IGFwcGxpZXMu"
+    }
+  ]
+}
   </script>
 
   <script>
@@ -458,31 +477,35 @@ ${jsonStr}
       let html = md
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         // Code blocks
-        .replace(/\`\`\`[\s\S]*?\`\`\`/g, m => '<pre><code>' + m.slice(3, -3).replace(/^\w+\n/, '') + '</code></pre>')
+        .replace(/```[sS]*?```/g, m => '<pre><code>' + m.slice(3, -3).replace(/^w+
+/, '') + '</code></pre>')
         // Inline code
-        .replace(/\`([^\`]+)\`/g, '<code>$1</code>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
         // Headings
         .replace(/^### (.+)$/gm, '<h3>$1</h3>')
         .replace(/^## (.+)$/gm, '<h2>$1</h2>')
         .replace(/^# (.+)$/gm, '<h1>$1</h1>')
         // Bold
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/**([^*]+)**/g, '<strong>$1</strong>')
         // Italic
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/*([^*]+)*/g, '<em>$1</em>')
         // Links
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+        .replace(/[([^]]+)](([^)]+))/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
         // Unordered list items
         .replace(/^[*-] (.+)$/gm, '<li>$1</li>')
         // Ordered list items
-        .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+        .replace(/^d+. (.+)$/gm, '<li>$1</li>')
         // Horizontal rule
         .replace(/^---$/gm, '<hr style="border-color:#30363d;margin:16px 0;">')
         // Paragraphs
-        .replace(/\n\n/g, '</p><p>')
-        .replace(/\n/g, '<br>');
+        .replace(/
+
+/g, '</p><p>')
+        .replace(/
+/g, '<br>');
 
       // Wrap li in ul
-      html = html.replace(/(<li>[\s\S]*?<\/li>(?:\s*<br>\s*<li>[\s\S]*?<\/li>)*)/g, '<ul>$1</ul>');
+      html = html.replace(/(<li>[sS]*?</li>(?:s*<br>s*<li>[sS]*?</li>)*)/g, '<ul>$1</ul>');
 
       return '<div class="content-markdown"><p>' + html + '</p></div>';
     }
@@ -533,7 +556,7 @@ ${jsonStr}
         const url = URL.createObjectURL(blob);
         html = '<div class="content-download">'
           + '<div>Tento typ obsahu (' + (mimeType || 'neznámý') + ') nelze zobrazit přímo.</div>'
-          + '<a class="btn btn-primary dl-btn" href="' + url + '" download="part-' + title.replace(/\s+/g,'_') + '">⬇ Stáhnout soubor</a>'
+          + '<a class="btn btn-primary dl-btn" href="' + url + '" download="part-' + title.replace(/s+/g,'_') + '">⬇ Stáhnout soubor</a>'
           + '</div>';
       }
       openModal(title, html);
@@ -737,148 +760,4 @@ ${jsonStr}
   })();
   </script>
 </body>
-</html>`;
-}
-
-// ── Route handler ──────────────────────────────────────────────
-
-router.post('/', async (req, res, next) => {
-  try {
-    const { manifest, parts, options = {} } = req.body;
-
-    if (!manifest || !Array.isArray(manifest.parts) || manifest.parts.length === 0) {
-      return res.status(400).json({ ok: false, error: 'manifest.parts[] is required and must not be empty' });
-    }
-    if (!Array.isArray(parts) || parts.length === 0) {
-      return res.status(400).json({ ok: false, error: 'parts[] is required and must not be empty' });
-    }
-
-    const compress = options.compress !== false; // default true
-    const docId = 'ENV-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + randomUUID().slice(0, 8).toUpperCase();
-    const created = new Date().toISOString();
-
-    // Process each part
-    const processedManifestParts = [];
-    const processedDataParts = [];
-    let totalSizeOriginal = 0;
-    let totalSizeStored = 0;
-
-    for (const partInput of parts) {
-      const id = partInput.id;
-      const metaEntry = manifest.parts.find(m => m.id === id);
-      if (!metaEntry) continue;
-
-      // accept `content` (raw string) or `data` (raw string / base64 passthrough)
-      const rawContent = partInput.content ?? partInput.data;
-      const content = typeof rawContent === 'string'
-        ? rawContent
-        : JSON.stringify(rawContent);
-
-      const originalSize = Buffer.byteLength(content, 'utf-8');
-      totalSizeOriginal += originalSize;
-
-      let storedData;
-      let isCompressed = false;
-      let storedSize;
-
-      if (compress && originalSize > 1024) {
-        // compressPayload expects an object — wrap string in object
-        const compressed = compressPayload({ _content: content });
-        storedData = compressed.data;
-        storedSize = compressed.compressed_size;
-        isCompressed = true;
-      } else {
-        // Store as base64 of UTF-8 bytes
-        storedData = Buffer.from(content, 'utf-8').toString('base64');
-        storedSize = Buffer.byteLength(storedData, 'utf-8');
-        isCompressed = false;
-      }
-
-      totalSizeStored += storedSize;
-
-      const hash = sha256(storedData);
-
-      processedManifestParts.push({
-        id,
-        type: metaEntry.type || 'text/plain',
-        label: metaEntry.label || id,
-        compressed: isCompressed,
-        encrypted: metaEntry.encrypted || false,
-        ...(metaEntry.encryption ? { encryption: metaEntry.encryption } : {}),
-        size_original: originalSize,
-        size_stored: storedSize,
-        hash,
-      });
-
-      processedDataParts.push({
-        id,
-        compressed: isCompressed,
-        data: storedData,
-      });
-    }
-
-    // Build manifest hash (sha256 of serialized manifest parts)
-    const manifestStr = JSON.stringify(processedManifestParts);
-    const manifestHash = sha256(manifestStr);
-
-    // Build envelope JSON
-    const envelope = {
-      header: {
-        format: 'poly/1.0',
-        doc_id: docId,
-        doc_type: 'envelope',
-        created,
-        ...(options.sign === true ? {
-          signature: {
-            algorithm: 'ES256',
-            covers: 'manifest',
-            value: manifestHash,
-            note: 'Placeholder — replace with actual ES256 signature in production',
-          },
-        } : {}),
-      },
-      manifest: {
-        label: typeof manifest.label === 'string'
-          ? { en: manifest.label }
-          : (manifest.label || { en: docId }),
-        ...(manifest.sender ? { sender: manifest.sender } : {}),
-        ...(manifest.recipients ? { recipients: manifest.recipients } : {}),
-        parts: processedManifestParts,
-      },
-      parts: processedDataParts,
-      ...(options.mail_summary ? {
-        mail_part: {
-          type: 'text/html',
-          label: { en: options.mail_summary, cs: options.mail_summary },
-          data: `<p style="font-family:sans-serif;color:#333;">${
-            options.mail_summary.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-          } (${processedManifestParts.length} part${processedManifestParts.length !== 1 ? 's' : ''})</p>`,
-        },
-      } : {}),
-    };
-
-    // Build HTML
-    const html = buildEnvelopeHtml(envelope);
-    const filename = `${docId}-envelope.html`;
-
-    // Ensure output dir exists
-    await mkdir(OUTPUT_DIR, { recursive: true });
-    await writeFile(join(OUTPUT_DIR, filename), html, 'utf-8');
-
-    return res.json({
-      ok: true,
-      doc_id: docId,
-      html_url: `/output/${filename}`,
-      manifest_hash: manifestHash,
-      parts_count: processedManifestParts.length,
-      total_size_original: totalSizeOriginal,
-      total_size_stored: totalSizeStored,
-      envelope_json: envelope,
-    });
-
-  } catch (err) {
-    next(err);
-  }
-});
-
-export default router;
+</html>

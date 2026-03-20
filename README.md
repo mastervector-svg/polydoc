@@ -38,6 +38,7 @@ Click the button → full interactive version loads on your server.
 | Invoice — full interactive | [faktura-full.html](https://mastervector-svg.github.io/polydoc/examples/faktura-full.html) |
 | Invoice — static mail version | [faktura-mail.html](https://mastervector-svg.github.io/polydoc/examples/faktura-mail.html) |
 | Real estate portal — transfer package | [realportal-transfer.html](https://mastervector-svg.github.io/polydoc/examples/realportal-transfer.html) |
+| **Envelope demo** — invoice package (cover letter + JSON + terms) | [envelope-demo.html](https://mastervector-svg.github.io/polydoc/examples/envelope-demo.html) |
 
 ---
 
