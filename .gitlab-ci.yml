@@ -1,0 +1,66 @@
+# .gitlab-ci.yml
+# Basic validation pipeline for PolyDoc spec and examples
+
+stages:
+  - validate
+  - pages
+
+variables:
+  NODE_VERSION: "20"
+
+# Validate OpenAPI spec
+validate-openapi:
+  stage: validate
+  image: node:20-alpine
+  script:
+    - npx @redocly/cli lint spec/openapi.yaml
+  rules:
+    - changes:
+        - spec/openapi.yaml
+
+# Validate HTML examples are well-formed and contain PolyDoc JSON
+validate-examples:
+  stage: validate
+  image: node:20-alpine
+  script:
+    - |
+      for f in examples/*.html templates/*.html; do
+        echo "Checking $f..."
+        grep -q 'application/poly+json' "$f" || (echo "FAIL: No poly+json block in $f" && exit 1)
+        grep -q 'id="raw-data"' "$f" || (echo "FAIL: No raw-data id in $f" && exit 1)
+        echo "OK: $f"
+      done
+
+# Publish to GitLab Pages (examples viewable online)
+pages:
+  stage: pages
+  script:
+    - mkdir -p public/examples public/templates
+    - cp examples/*.html public/examples/
+    - cp templates/*.html public/templates/
+    - |
+      cat > public/index.html << 'EOF'
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="UTF-8"><title>PolyDoc Examples</title>
+      <style>body{font-family:system-ui;max-width:600px;margin:60px auto;padding:0 20px}
+      a{display:block;padding:8px 0;color:#0d6efd}</style></head>
+      <body>
+      <h1>PolyDoc Examples</h1>
+      <h2>Documents</h2>
+      <a href="examples/faktura-full.html">Invoice — Full interactive version</a>
+      <a href="examples/faktura-mail.html">Invoice — Mail static version</a>
+      <h2>Transfer</h2>
+      <a href="examples/realportal-transfer.html">RealPortal project transfer</a>
+      <h2>Templates</h2>
+      <a href="templates/polydoc-full.html">Full template (with placeholder JSON)</a>
+      <a href="templates/polydoc-mail.html">Mail template (with placeholders)</a>
+      <a href="templates/polydoc-transfer.html">Transfer viewer template</a>
+      <p><a href="https://gitlab.com/polydoc/polydoc">← Back to repository</a></p>
+      </body></html>
+      EOF
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"

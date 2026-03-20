@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PolyDoc</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ══════════════════════════════════════════════
+       POLY INTERPRETER CSS v1.0
+       ══════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --poly-primary: #0d6efd;
+      --poly-accent: #ffc107;
+      --poly-success: #198754;
+      --poly-warning: #856404;
+      --poly-danger: #842029;
+      --poly-bg: #eef0f4;
+      --poly-page: #ffffff;
+      --poly-text: #1c1e26;
+      --poly-muted: #6b7280;
+      --poly-border: #e5e7eb;
+      --poly-radius: 8px;
+    }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--poly-bg);
+      color: var(--poly-text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Toolbar ─────────────────────────────────── */
+    #poly-toolbar {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 56px;
+      background: var(--poly-text);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px;
+      z-index: 100;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .tb-left { display: flex; align-items: center; gap: 12px; }
+    .poly-logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      background: linear-gradient(135deg, var(--poly-primary), #6366f1);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 5px;
+      text-transform: uppercase;
+    }
+    #tb-title {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.88rem;
+      font-weight: 400;
+    }
+    .tb-right { display: flex; gap: 6px; }
+    .tb-btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.85);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tb-btn:hover { background: rgba(255,255,255,0.16); color: white; }
+    .tb-btn.accent {
+      background: var(--poly-primary);
+      border-color: var(--poly-primary);
+      color: white;
+    }
+    .tb-btn.accent:hover { background: #0b5ed7; }
+
+    /* ── Page Wrap ───────────────────────────────── */
+    .poly-wrap {
+      padding: 80px 24px 64px;
+      display: flex; justify-content: center;
+    }
+    .poly-page {
+      width: 210mm;
+      min-height: 297mm;
+      background: var(--poly-page);
+      box-shadow: 0 4px 32px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+      padding: 52px 56px;
+      position: relative;
+      border-radius: 2px;
+    }
+
+    /* ── Banner ──────────────────────────────────── */
+    .poly-banner {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 16px;
+      border-radius: var(--poly-radius);
+      margin-bottom: 28px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .poly-banner.success { background: #dcfce7; color: #14532d; border: 1px solid #bbf7d0; }
+    .poly-banner.warning { background: #fef9c3; color: #713f12; border: 1px solid #fde68a; }
+    .poly-banner.danger  { background: #fee2e2; color: #7f1d1d; border: 1px solid #fecaca; }
+    .poly-banner.info    { background: #dbeafe; color: #1e3a5f; border: 1px solid #bfdbfe; }
+
+    /* ── Doc Header ──────────────────────────────── */
+    .poly-doc-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 36px;
+      padding-bottom: 28px;
+      border-bottom: 2px solid var(--poly-border);
+    }
+    .poly-doc-header h1 {
+      font-size: 2.6rem;
+      font-weight: 700;
+      color: var(--poly-primary);
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .poly-doc-meta { text-align: right; }
+    .poly-doc-meta p {
+      font-size: 0.85rem;
+      color: var(--poly-muted);
+      margin-bottom: 3px;
+    }
+    .poly-doc-meta strong { color: var(--poly-text); }
+
+    /* ── Parties ─────────────────────────────────── */
+    .poly-parties {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 20px; margin: 28px 0;
+    }
+    .poly-party {
+      padding: 18px 20px;
+      border: 1px solid var(--poly-border);
+      border-radius: var(--poly-radius);
+      background: #fafafa;
+    }
+    .poly-party-role {
+      font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--poly-primary);
+      margin-bottom: 8px;
+    }
+    .poly-party-name { font-weight: 600; font-size: 1rem; margin-bottom: 6px; }
+    .poly-party-detail { font-size: 0.83rem; color: var(--poly-muted); line-height: 1.7; }
+    .poly-party-detail .iban {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-top: 4px;
+    }
+
+    /* ── Table ───────────────────────────────────── */
+    .poly-table-wrap { margin: 28px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    thead th {
+      background: var(--poly-primary);
+      color: white; font-weight: 600;
+      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 10px 14px; text-align: left;
+    }
+    thead th:first-child { border-radius: 6px 0 0 0; }
+    thead th:last-child  { border-radius: 0 6px 0 0; text-align: right; }
+    tbody td { padding: 10px 14px; border-bottom: 1px solid var(--poly-border); }
+    tbody td:last-child { text-align: right; font-family: 'DM Mono', monospace; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #f8faff; }
+    tfoot td {
+      padding: 9px 14px;
+      font-size: 0.86rem;
+    }
+    tfoot tr:not(:last-child) td {
+      color: var(--poly-muted);
+      border-top: 1px solid var(--poly-border);
+    }
+    tfoot tr:last-child td {
+      background: var(--poly-primary);
+      color: white;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    tfoot tr:last-child td:first-child { border-radius: 0 0 0 6px; }
+    tfoot tr:last-child td:last-child  { border-radius: 0 0 6px 0; text-align: right; }
+    tfoot td:last-child { text-align: right; font-family: 'DM Mono', monospace; }
+
+    /* ── Image ───────────────────────────────────── */
+    .poly-image { margin: 24px 0; }
+    .poly-image img { max-width: 100%; border-radius: 6px; display: block; }
+    .poly-image figcaption {
+      font-size: 0.78rem; color: var(--poly-muted);
+      margin-top: 6px; font-style: italic;
+    }
+
+    /* ── Rich Text ───────────────────────────────── */
+    .poly-rich {
+      margin: 24px 0;
+      padding: 16px 20px;
+      border-left: 3px solid var(--poly-accent);
+      background: #fffbeb;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.88rem; color: #4b4b2f;
+      line-height: 1.75;
+    }
+
+    /* ── Checklist ───────────────────────────────── */
+    .poly-checklist { list-style: none; margin: 20px 0; }
+    .poly-checklist li {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 0.88rem;
+    }
+    .poly-checklist li:last-child { border-bottom: none; }
+    .chk {
+      width: 20px; height: 20px; flex-shrink: 0;
+      border: 2px solid var(--poly-border); border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+    }
+    .chk.on { background: var(--poly-success); border-color: var(--poly-success); color: white; }
+    .chk.on + span { color: var(--poly-muted); text-decoration: line-through; }
+
+    /* ── Paragraph ───────────────────────────────── */
+    .poly-p { margin: 16px 0; font-size: 0.9rem; color: var(--poly-muted); }
+
+    /* ── Actions ─────────────────────────────────── */
+    .poly-actions { margin: 28px 0; display: flex; gap: 10px; flex-wrap: wrap; }
+    .poly-action-btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem; font-weight: 600;
+      padding: 10px 20px; border-radius: 7px;
+      border: none; cursor: pointer;
+      background: var(--poly-primary); color: white;
+      transition: all 0.15s;
+    }
+    .poly-action-btn:hover { background: #0b5ed7; transform: translateY(-1px); }
+    .poly-action-btn:active { transform: none; }
+
+    /* ── Divider ─────────────────────────────────── */
+    .poly-divider { border: none; border-top: 1px solid var(--poly-border); margin: 24px 0; }
+
+    /* ── Doc Footer ──────────────────────────────── */
+    .poly-doc-footer {
+      margin-top: 48px;
+      padding-top: 16px;
+      border-top: 1px solid var(--poly-border);
+      display: flex; justify-content: space-between;
+      font-size: 0.72rem; color: #c0c0c0;
+      font-family: 'DM Mono', monospace;
+    }
+    .poly-doc-footer a { color: #c0c0c0; text-decoration: none; }
+    .poly-doc-footer a:hover { color: var(--poly-primary); }
+
+    /* ── Print ───────────────────────────────────── */
+    @media print {
+      #poly-toolbar { display: none; }
+      body { background: white; }
+      .poly-wrap { padding: 0; }
+      .poly-page { box-shadow: none; width: 100%; min-height: unset; padding: 20mm; }
+      .poly-actions { display: none; }
+    }
+
+    /* ── Responsive ──────────────────────────────── */
+    @media (max-width: 720px) {
+      .poly-page { width: 100%; padding: 28px 20px; }
+      .poly-parties { grid-template-columns: 1fr; }
+      .poly-doc-header { flex-direction: column; gap: 16px; }
+      .poly-doc-meta { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     POLY DATA — nahraď JSON svými daty
+     ══════════════════════════════════════════════════════ -->
+<script type="application/poly+json" id="raw-data">
+{
+  "header": {
+    "format": "poly/1.0",
+    "spec": "https://github.com/polydoc/spec/blob/main/v1.0.md",
+    "doc_id": "INV-2026-042",
+    "doc_type": "invoice",
+    "created": "2026-03-12T08:15:00Z",
+    "generator": "PolyDoc v1.0"
+  },
+  "metadata": {
+    "title": "Faktura INV-2026-042",
+    "language": "cs",
+    "author": "Jan Novák",
+    "tags": ["faktura", "2026", "acme"],
+    "custom_fields": {
+      "vs": "20260042",
+      "ks": "0308",
+      "due_date": "2026-04-12"
+    }
+  },
+  "content": {
+    "type": "document",
+    "sections": [
+      {
+        "type": "header",
+        "elements": [
+          { "type": "heading", "level": 1, "text": "Faktura" },
+          { "type": "paragraph", "text": "Číslo: INV-2026-042" },
+          { "type": "paragraph", "text": "Datum vystavení: 12. 3. 2026  ·  Splatnost: 12. 4. 2026" }
+        ]
+      },
+      {
+        "type": "party",
+        "role": "supplier",
+        "data": {
+          "name": "Jan Novák s.r.o.",
+          "id": "CZ87654321",
+          "address": "Příkop 4, 602 00 Brno",
+          "bank": "CZ6508000000192000145399",
+          "email": "fakturace@example.cz"
+        }
+      },
+      {
+        "type": "party",
+        "role": "client",
+        "data": {
+          "name": "Acme Corp s.r.o.",
+          "id": "CZ12345678",
+          "address": "Václavské nám. 1, 110 00 Praha 1"
+        }
+      },
+      {
+        "type": "table",
+        "id": "items",
+        "columns": ["Popis", "Množství", "Jedn. cena", "Celkem"],
+        "rows": [
+          ["Analýza a audit dokumentového workflow", 5, "2 000 Kč", "10 000 Kč"],
+          ["Implementace PolyDoc formátu", 10, "2 500 Kč", "25 000 Kč"],
+          ["Školení týmu (2 osoby, 1 den)", 2, "1 500 Kč", "3 000 Kč"]
+        ],
+        "footer": {
+          "total": 38000,
+          "currency": "CZK",
+          "vat_rate": 21
+        }
+      },
+      {
+        "type": "rich_text",
+        "html": "<p><strong>Platební podmínky:</strong> Platba převodem do 30 dnů od vystavení. Variabilní symbol: <strong>20260042</strong>. Konstantní symbol: 0308. Děkujeme za spolupráci.</p>"
+      },
+      {
+        "type": "checklist",
+        "items": [
+          { "text": "Odesláno emailem zákazníkovi", "checked": true },
+          { "text": "Zaúčtováno v IS", "checked": true },
+          { "text": "Platba přijata na účet", "checked": false }
+        ]
+      },
+      { "type": "divider" },
+      {
+        "type": "paragraph",
+        "text": "Vystavil: Jan Novák  ·  jan.novak@example.cz  ·  +420 777 123 456"
+      }
+    ]
+  },
+  "visuals": {
+    "theme": "modern-clean",
+    "page_size": "A4",
+    "colors": {
+      "primary": "#0d6efd",
+      "accent": "#ffc107"
+    }
+  },
+  "logic": {
+    "dynamic": [
+      {
+        "trigger": "onLoad",
+        "action": "fetchStatus",
+        "api_url": "https://api.example.cz/doc/INV-2026-042/status",
+        "target_field": "is_paid"
+      }
+    ],
+    "conditions": [
+      {
+        "field": "is_paid",
+        "value": true,
+        "banner": { "text": "✅ ZAPLACENO — děkujeme za platbu!", "style": "success" }
+      },
+      {
+        "field": "is_paid",
+        "value": false,
+        "banner": { "text": "⏳ Čeká na platbu · Splatnost: 12. 4. 2026", "style": "warning" }
+      }
+    ],
+    "actions": [
+      {
+        "label": "✅ Potvrdit přijetí",
+        "api_url": "https://api.example.cz/doc/INV-2026-042/confirm",
+        "method": "POST",
+        "success_message": "Děkujeme za potvrzení!"
+      }
+    ],
+    "demo_state": {
+      "is_paid": false
+    }
+  }
+}
+</script>
+
+<!-- Toolbar -->
+<div id="poly-toolbar">
+  <div class="tb-left">
+    <span class="poly-logo">Poly</span>
+    <span id="tb-title">…</span>
+  </div>
+  <div class="tb-right">
+    <button class="tb-btn" onclick="PolyDoc.toggleDemo()">🔄 Demo stav</button>
+    <button class="tb-btn" onclick="PolyDoc.verify()">🔏 Ověřit</button>
+    <button class="tb-btn" onclick="PolyDoc.exportJSON()">⬇ JSON</button>
+    <button class="tb-btn accent" onclick="window.print()">🖨 Tisk / PDF</button>
+  </div>
+</div>
+
+<!-- Page -->
+<div class="poly-wrap">
+  <div class="poly-page">
+    <div id="poly-banner"></div>
+    <div id="app">Načítám…</div>
+    <div class="poly-doc-footer">
+      <span id="footer-id"></span>
+      <span>PolyDoc · <a href="https://github.com/polydoc/spec" target="_blank">spec v1.0</a></span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     POLY INTERPRETER v1.0
+     ══════════════════════════════════════════════════════ -->
+<script>
+const PolyDoc = (() => {
+  let _doc = null, _state = {};
+
+  const esc = s => String(s ?? '').replace(/[&<>"']/g,
+    m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+
+  const fmt = (n, cur) => Number(n).toLocaleString('cs-CZ') + (cur ? ' ' + cur : '');
+
+  // ── Renderers ──────────────────────────────────────────
+  function renderSection(s) {
+    switch (s.type) {
+      case 'header':    return renderDocHeader(s);
+      case 'party':     return '__PARTY__' + JSON.stringify(s);
+      case 'table':     return renderTable(s);
+      case 'image':     return renderImage(s);
+      case 'rich_text': return `<div class="poly-rich">${s.html || ''}</div>`;
+      case 'checklist': return renderChecklist(s);
+      case 'paragraph': return `<p class="poly-p">${esc(s.text)}</p>`;
+      case 'divider':   return '<hr class="poly-divider">';
+      default: return `<pre style="color:red;font-size:.8rem">[unknown: ${s.type}]</pre>`;
+    }
+  }
+
+  function renderDocHeader(s) {
+    const els = s.elements || [];
+    const h1 = els.find(e => e.type === 'heading');
+    const paras = els.filter(e => e.type === 'paragraph');
+    return `
+      <div class="poly-doc-header">
+        <div>${h1 ? `<h1>${esc(h1.text)}</h1>` : ''}</div>
+        <div class="poly-doc-meta">${paras.map(p => `<p>${esc(p.text)}</p>`).join('')}</div>
+      </div>`;
+  }
+
+  function renderPartyCard(s) {
+    const d = s.data || {};
+    const labels = { supplier: 'Dodavatel', client: 'Odběratel', guarantor: 'Ručitel', agent: 'Zástupce' };
+    return `<div class="poly-party">
+      <div class="poly-party-role">${labels[s.role] || s.role}</div>
+      <div class="poly-party-name">${esc(d.name)}</div>
+      <div class="poly-party-detail">
+        IČ: ${esc(d.id || '–')}<br>${esc(d.address || '')}
+        ${d.bank ? `<br><span class="iban">${esc(d.bank)}</span>` : ''}
+        ${d.email ? `<br>${esc(d.email)}` : ''}
+      </div>
+    </div>`;
+  }
+
+  function renderTable(s) {
+    const cols = s.columns || [];
+    let h = `<div class="poly-table-wrap"><table><thead><tr>`;
+    cols.forEach(c => h += `<th>${esc(c)}</th>`);
+    h += `</tr></thead><tbody>`;
+    (s.rows || []).forEach(r => {
+      h += '<tr>';
+      r.forEach(c => h += `<td>${esc(c)}</td>`);
+      h += '</tr>';
+    });
+    h += '</tbody>';
+    if (s.footer) {
+      const f = s.footer, span = cols.length - 1;
+      const vat = Math.round(f.total * f.vat_rate / 100);
+      h += `<tfoot>
+        <tr><td colspan="${span}">Základ daně</td><td>${fmt(f.total, f.currency)}</td></tr>
+        <tr><td colspan="${span}">DPH ${f.vat_rate}%</td><td>${fmt(vat, f.currency)}</td></tr>
+        <tr><td colspan="${span}">Celkem k úhradě</td><td>${fmt(f.total + vat, f.currency)}</td></tr>
+      </tfoot>`;
+    }
+    return h + '</table></div>';
+  }
+
+  function renderImage(s) {
+    return `<figure class="poly-image">
+      <img src="${esc(s.src)}" alt="${esc(s.alt || '')}" style="width:${esc(s.width || 'auto')}">
+      ${s.caption ? `<figcaption>${esc(s.caption)}</figcaption>` : ''}
+    </figure>`;
+  }
+
+  function renderChecklist(s) {
+    return '<ul class="poly-checklist">' +
+      (s.items || []).map(i => `<li>
+        <div class="chk ${i.checked ? 'on' : ''}">${i.checked ? '✓' : ''}</div>
+        <span>${esc(i.text)}</span>
+      </li>`).join('') + '</ul>';
+  }
+
+  function renderActions(actions) {
+    if (!actions?.length) return '';
+    return '<div class="poly-actions">' +
+      actions.map(a => `<button class="poly-action-btn" onclick="PolyDoc.doAction(${JSON.stringify(a.api_url)}, ${JSON.stringify(a.method || 'POST')}, ${JSON.stringify(a.success_message || 'Hotovo!')})">${esc(a.label)}</button>`).join('') +
+      '</div>';
+  }
+
+  // ── Party grid assembly ────────────────────────────────
+  function resolveParties(parts) {
+    const markers = parts.filter(p => p.startsWith('__PARTY__'));
+    if (!markers.length) return parts;
+    const grid = `<div class="poly-parties">${markers.map(m => renderPartyCard(JSON.parse(m.slice(9)))).join('')}</div>`;
+    let done = false;
+    return parts.map(p => {
+      if (!p.startsWith('__PARTY__')) return p;
+      if (!done) { done = true; return grid; }
+      return '';
+    });
+  }
+
+  // ── Visuals ────────────────────────────────────────────
+  function applyVisuals(v) {
+    if (!v?.colors) return;
+    const r = document.documentElement;
+    if (v.colors.primary) r.style.setProperty('--poly-primary', v.colors.primary);
+    if (v.colors.accent)  r.style.setProperty('--poly-accent', v.colors.accent);
+  }
+
+  // ── Logic ──────────────────────────────────────────────
+  function evalConditions() {
+    const slot = document.getElementById('poly-banner');
+    slot.innerHTML = '';
+    for (const c of (_doc.logic?.conditions || [])) {
+      if (_state[c.field] === c.value && c.banner) {
+        slot.innerHTML = `<div class="poly-banner ${c.banner.style || 'info'}">${c.banner.text}</div>`;
+        break;
+      }
+    }
+  }
+
+  async function fetchDynamicData() {
+    for (const d of (_doc.logic?.dynamic || [])) {
+      try {
+        const url = d.api_url.replace('{doc_id}', _doc.header?.doc_id || '');
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (d.target_field && data[d.target_field] !== undefined) {
+            _state[d.target_field] = data[d.target_field];
+          }
+        }
+      } catch (_) { /* API nedostupné, používáme demo_state */ }
+    }
+    evalConditions();
+  }
+
+  // ── Init ───────────────────────────────────────────────
+  function init() {
+    const raw = document.getElementById('raw-data')?.textContent;
+    const app = document.getElementById('app');
+    if (!raw) { app.innerHTML = '<p style="color:red">Chyba: data nenalezena</p>'; return; }
+    try { _doc = JSON.parse(raw); }
+    catch (e) { app.innerHTML = `<p style="color:red">JSON chyba: ${e.message}</p>`; return; }
+
+    // Metadata
+    const title = _doc.metadata?.title || _doc.header?.doc_id || 'PolyDoc';
+    document.title = title;
+    document.getElementById('tb-title').textContent = title;
+    document.getElementById('footer-id').textContent =
+      `${_doc.header?.doc_id || ''} · poly/1.0 · ${_doc.header?.created?.slice(0,10) || ''}`;
+
+    applyVisuals(_doc.visuals);
+    _state = { ..._doc.logic?.demo_state };
+
+    let parts = (_doc.content?.sections || []).map(renderSection);
+    parts = resolveParties(parts);
+
+    const actionsHtml = renderActions(_doc.logic?.actions);
+    app.innerHTML = parts.join('') + actionsHtml;
+
+    evalConditions();
+    fetchDynamicData();
+  }
+
+  // ── Public API ─────────────────────────────────────────
+  return {
+    init,
+    getDoc: () => _doc,
+
+    toggleDemo() {
+      _state.is_paid = !_state.is_paid;
+      evalConditions();
+    },
+
+    async doAction(url, method, successMsg) {
+      try {
+        await fetch(url, { method });
+        alert(successMsg);
+      } catch (_) {
+        alert('Demo: akce by byla odeslána na ' + url);
+      }
+    },
+
+    exportJSON() {
+      const raw = document.getElementById('raw-data').textContent.trim();
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([raw], { type: 'application/json' })),
+        download: `${_doc?.header?.doc_id || 'polydoc'}.json`
+      });
+      a.click();
+    },
+
+    verify() {
+      const sig = _doc?.header?.signature;
+      alert(sig
+        ? '✅ Dokument má podpis ES256\nAlgoritmus: ' + sig.algorithm + '\n\n(Ověření SubtleCrypto — implementováno v PolyDoc v1.1)'
+        : '⚠️ Dokument nemá digitální podpis.\nPro faktury a smlouvy doporučujeme podpis přidat.');
+    }
+  };
+})();
+
+document.addEventListener('DOMContentLoaded', () => PolyDoc.init());
+</script>
+</body>
+</html>

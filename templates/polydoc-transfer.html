@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PolyDoc Transfer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2d3148;
+      --text: #e8eaf0;
+      --muted: #7b82a0;
+      --primary: #5b7cf6;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --mono: 'DM Mono', 'Courier New', monospace;
+    }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      position: fixed; top: 0; left: 0; right: 0; height: 52px;
+      background: rgba(15,17,23,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; z-index: 100;
+    }
+    .tb-left { display: flex; align-items: center; gap: 12px; }
+    .poly-logo {
+      font-family: var(--mono); font-size: 10px; font-weight: 500;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      background: linear-gradient(135deg, var(--primary), #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      border: 1px solid #3d3f6e; padding: 3px 10px; border-radius: 4px;
+    }
+    .tb-type {
+      font-family: var(--mono); font-size: 11px;
+      color: var(--muted); letter-spacing: 0.05em;
+    }
+    .tb-right { display: flex; gap: 6px; }
+    .tb-btn {
+      font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500;
+      padding: 6px 12px; border-radius: 5px;
+      border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .tb-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .tb-btn.primary { background: var(--primary); border-color: var(--primary); color: white; }
+    .tb-btn.primary:hover { background: #4a6cf5; }
+
+    /* ── Layout ── */
+    .wrap { padding: 68px 24px 48px; max-width: 960px; margin: 0 auto; }
+
+    /* ── Hero ── */
+    .hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--primary), #a78bfa, var(--green));
+    }
+    .hero-title {
+      font-size: 1.5rem; font-weight: 700; color: var(--text);
+      margin-bottom: 6px; letter-spacing: -0.02em;
+    }
+    .hero-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 20px; }
+    .hero-meta {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+    }
+    .tag {
+      font-family: var(--mono); font-size: 11px;
+      padding: 3px 10px; border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+    }
+    .tag.green { border-color: #065f46; color: var(--green); background: #022c22; }
+    .tag.blue  { border-color: #1e3a8a; color: #93c5fd; background: #0d1f4a; }
+    .tag.yellow{ border-color: #78350f; color: var(--yellow); background: #2d1a06; }
+
+    .sig-status {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border-radius: 7px;
+      font-size: 0.85rem; font-weight: 500;
+    }
+    .sig-status.ok  { background: #022c22; border: 1px solid #065f46; color: var(--green); }
+    .sig-status.warn{ background: #2d1a06; border: 1px solid #78350f; color: var(--yellow); }
+    .sig-status.err { background: #2d0a0a; border: 1px solid #7f1d1d; color: var(--red); }
+
+    /* ── Stats row ── */
+    .stats {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 12px; margin-bottom: 24px;
+    }
+    .stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px 18px;
+    }
+    .stat-val {
+      font-size: 1.6rem; font-weight: 700; color: var(--text);
+      font-family: var(--mono); letter-spacing: -0.03em;
+      margin-bottom: 2px;
+    }
+    .stat-label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* ── Section header ── */
+    .section-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 28px 0 12px;
+    }
+    .section-title {
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+    .section-count {
+      font-family: var(--mono); font-size: 11px;
+      color: var(--primary);
+      background: #1a1f3a; border: 1px solid #2d3562;
+      padding: 2px 8px; border-radius: 4px;
+    }
+
+    /* ── Item cards ── */
+    .items { display: flex; flex-direction: column; gap: 8px; }
+    .item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: 32px 1fr auto auto;
+      align-items: center;
+      gap: 14px;
+      transition: border-color 0.15s;
+    }
+    .item:hover { border-color: var(--primary); }
+    .item-icon { font-size: 1.2rem; text-align: center; }
+    .item-name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+    .item-id   { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .item-version {
+      font-family: var(--mono); font-size: 11px;
+      padding: 2px 8px; border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .item-size {
+      font-family: var(--mono); font-size: 11px;
+      color: var(--muted); text-align: right; white-space: nowrap;
+    }
+    .item-size .compressed { color: var(--green); font-size: 10px; display: block; }
+
+    /* ── Changelog ── */
+    .changelog {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px 20px; margin-top: 24px;
+    }
+    .changelog-title {
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--muted); margin-bottom: 12px;
+    }
+    .diff-item {
+      display: flex; align-items: baseline; gap: 8px;
+      padding: 5px 0; border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .diff-item:last-child { border-bottom: none; }
+    .diff-add { color: var(--green); font-family: var(--mono); font-size: 12px; font-weight: 700; }
+    .diff-mod { color: var(--yellow); font-family: var(--mono); font-size: 12px; font-weight: 700; }
+    .diff-del { color: var(--red); font-family: var(--mono); font-size: 12px; font-weight: 700; }
+
+    /* ── ENV schema ── */
+    .env-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin-top: 8px; }
+    .env-table th {
+      text-align: left; padding: 7px 12px;
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); border-bottom: 1px solid var(--border);
+    }
+    .env-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .env-table tr:last-child td { border-bottom: none; }
+    .env-key { font-family: var(--mono); color: #93c5fd; font-size: 12px; }
+    .env-type { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+    .env-req { color: var(--red); font-size: 11px; font-weight: 600; }
+    .env-opt { color: var(--muted); font-size: 11px; }
+
+    /* ── Source / target ── */
+    .transfer-flow {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .flow-node {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 7px; padding: 8px 14px;
+      font-size: 0.82rem;
+    }
+    .flow-node strong { color: var(--primary); }
+    .flow-arrow { color: var(--muted); font-size: 1.2rem; }
+
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .item { grid-template-columns: 28px 1fr; }
+      .item-version, .item-size { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     POLY TRANSFER DATA
+     ══════════════════════════════════════════════════ -->
+<script type="application/poly+json" id="raw-data">
+{
+  "header": {
+    "format": "poly/1.0",
+    "spec": "https://github.com/polydoc/spec/blob/main/transfer-v1.0.md",
+    "doc_id": "transfer_realportal_sprint4_20260312",
+    "doc_type": "transfer",
+    "transfer": {
+      "purpose": "snapshot",
+      "label": "RealPortal v2 — Sprint 4 snapshot",
+      "source": {
+        "tool": "lovable",
+        "project_id": "proj_abc123",
+        "project_name": "RealPortal v2",
+        "url": "https://lovable.dev/projects/proj_abc123"
+      },
+      "target": {
+        "tool": "cursor",
+        "hint": "Importovat jako nový workspace"
+      },
+      "contents": [
+        "agent_config",
+        "knowledge_base",
+        "frontend_structure",
+        "backend_structure",
+        "connector_config",
+        "env_schema"
+      ],
+      "compression": "deflate",
+      "encoding": "base64",
+      "total_items": 9,
+      "total_size_bytes": 284500,
+      "compressed_size_bytes": 91200
+    },
+    "version": {
+      "schema": "1.0",
+      "project": "2.4.1",
+      "created_at": "2026-03-12T08:00:00Z",
+      "snapshot_id": "snap_20260312_0800",
+      "previous_snapshot": "snap_20260305_1430",
+      "changelog": "Přidány konektory Supabase + Resend. Aktualizován agent pro generování nabídek. Opravena autentizace JWT.",
+      "diff": {
+        "added": ["connector_supabase", "connector_resend"],
+        "modified": ["agent_offer_generator", "backend_main"],
+        "removed": [],
+        "breaking_changes": false
+      }
+    },
+    "signature": {
+      "algorithm": "ES256",
+      "value": "MEUCIQD_DEMO_SIGNATURE_NOT_REAL",
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMFkwEwYH...\n-----END PUBLIC KEY-----",
+      "payload_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "generator": {
+      "tool": "Lovable Export v1.2",
+      "timestamp": "2026-03-12T08:00:00Z",
+      "operator": "jan.novak@example.cz"
+    }
+  },
+  "payload": [
+    {
+      "type": "agent_config",
+      "id": "agent_offer_generator",
+      "label": "Agent — generování nabídek nemovitostí",
+      "version": "1.3.0",
+      "compressed": false,
+      "size_bytes": 2840,
+      "data": {
+        "model": "claude-sonnet-4-5",
+        "provider": "anthropic",
+        "system_prompt": "Jsi expert na realitní komunikaci. Generuješ personalizované nabídky...",
+        "temperature": 0.7,
+        "max_tokens": 2000,
+        "tools": ["get_property_details", "send_polydoc_mail"],
+        "memory": { "type": "supabase_vector", "table": "agent_memory" }
+      }
+    },
+    {
+      "type": "agent_config",
+      "id": "agent_client_support",
+      "label": "Agent — klientská podpora",
+      "version": "0.9.1",
+      "compressed": false,
+      "size_bytes": 1920,
+      "data": {
+        "model": "claude-haiku-4-5-20251001",
+        "provider": "anthropic",
+        "system_prompt": "Odpovídáš na otázky klientů realitního portálu...",
+        "temperature": 0.3,
+        "max_tokens": 1000,
+        "tools": ["get_faq", "escalate_to_human"]
+      }
+    },
+    {
+      "type": "knowledge_base",
+      "id": "kb_realty_rules",
+      "label": "Znalostní báze — realitní komunikace",
+      "version": "2.1.0",
+      "compressed": false,
+      "size_bytes": 18400,
+      "data": {
+        "format": "structured",
+        "language": "cs",
+        "sections_count": 5,
+        "items_count": 47,
+        "last_updated": "2026-03-10T14:00:00Z"
+      }
+    },
+    {
+      "type": "frontend_structure",
+      "id": "frontend_main",
+      "label": "Frontend — hlavní aplikace",
+      "version": "4.2.1",
+      "framework": "react",
+      "compressed": true,
+      "size_bytes": 142000,
+      "compressed_size_bytes": 48200,
+      "data": "eJyVkMFOwzAMhu99iiiXHSaNg..."
+    },
+    {
+      "type": "backend_structure",
+      "id": "backend_main",
+      "label": "Backend API — hlavní server",
+      "version": "3.1.0",
+      "framework": "node-express",
+      "compressed": true,
+      "size_bytes": 89000,
+      "compressed_size_bytes": 28900,
+      "data_schema": {
+        "endpoints_count": 24,
+        "models_count": 8,
+        "database": "postgresql",
+        "orm": "prisma"
+      }
+    },
+    {
+      "type": "connector_config",
+      "id": "connector_supabase",
+      "label": "Konektor — Supabase",
+      "version": "1.0.0",
+      "compressed": false,
+      "size_bytes": 1200,
+      "data": {
+        "service": "supabase",
+        "tables": ["properties", "clients", "messages", "doc_tokens", "agent_memory"],
+        "rls_enabled": true
+      }
+    },
+    {
+      "type": "connector_config",
+      "id": "connector_resend",
+      "label": "Konektor — Resend (email)",
+      "version": "1.0.0",
+      "compressed": false,
+      "size_bytes": 640,
+      "data": {
+        "service": "resend",
+        "from_domain": "realportal.cz",
+        "templates": ["polydoc_offer", "polydoc_confirmation", "magic_link"]
+      }
+    },
+    {
+      "type": "connector_config",
+      "id": "connector_stripe",
+      "label": "Konektor — Stripe (platby)",
+      "version": "0.8.0",
+      "compressed": false,
+      "size_bytes": 980,
+      "data": {
+        "service": "stripe",
+        "mode": "live",
+        "webhooks": ["payment_intent.succeeded", "payment_intent.failed"]
+      }
+    },
+    {
+      "type": "env_schema",
+      "id": "env_production",
+      "label": "ENV schéma — produkce",
+      "note": "POUZE SCHÉMA — žádné skutečné hodnoty!",
+      "compressed": false,
+      "size_bytes": 3200,
+      "data": {
+        "variables": [
+          { "key": "SUPABASE_URL",      "type": "url",    "required": true,  "group": "database", "description": "URL Supabase projektu" },
+          { "key": "SUPABASE_ANON_KEY", "type": "secret", "required": true,  "group": "database", "description": "Anon klíč" },
+          { "key": "ANTHROPIC_API_KEY", "type": "secret", "required": true,  "group": "ai",       "description": "Claude API klíč" },
+          { "key": "RESEND_API_KEY",    "type": "secret", "required": true,  "group": "email",    "description": "Resend API klíč" },
+          { "key": "STRIPE_SECRET_KEY", "type": "secret", "required": true,  "group": "payments", "description": "Stripe secret" },
+          { "key": "IS_BASE_URL",       "type": "url",    "required": true,  "group": "app",      "description": "Base URL aplikace" },
+          { "key": "JWT_SECRET",        "type": "secret", "required": true,  "group": "auth",     "description": "JWT signing secret" },
+          { "key": "NEXT_PUBLIC_APP_URL","type": "url",   "required": true,  "group": "app",      "description": "Veřejná URL" },
+          { "key": "LOG_LEVEL",         "type": "enum",   "required": false, "group": "app",      "description": "debug|info|warn|error" },
+          { "key": "RATE_LIMIT_RPM",    "type": "number", "required": false, "group": "app",      "description": "Požadavků za minutu" }
+        ]
+      }
+    }
+  ]
+}
+</script>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <div class="tb-left">
+    <span class="poly-logo">Poly · Transfer</span>
+    <span class="tb-type" id="tb-label">…</span>
+  </div>
+  <div class="tb-right">
+    <button class="tb-btn" onclick="PT.exportJSON()">⬇ JSON</button>
+    <button class="tb-btn" onclick="PT.verify()">🔏 Ověřit</button>
+    <button class="tb-btn primary" onclick="PT.copyImportSnippet()">📋 Import snippet</button>
+  </div>
+</div>
+
+<div class="wrap" id="app">Načítám…</div>
+
+<script>
+const PT = (() => {
+  let _doc = null;
+
+  const esc = s => String(s ?? '').replace(/[&<>"']/g,
+    m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+
+  const fmtBytes = b => b > 1e6 ? (b/1e6).toFixed(1)+' MB'
+                       : b > 1e3 ? (b/1e3).toFixed(0)+' KB' : b+' B';
+
+  const TYPE_META = {
+    agent_config:       { icon: '🤖', label: 'Agent' },
+    knowledge_base:     { icon: '🧠', label: 'Znalostní báze' },
+    frontend_structure: { icon: '🎨', label: 'Frontend' },
+    backend_structure:  { icon: '⚙️',  label: 'Backend' },
+    connector_config:   { icon: '🔌', label: 'Konektor' },
+    ui_components:      { icon: '🧩', label: 'UI komponenty' },
+    env_schema:         { icon: '🔑', label: 'ENV schéma' },
+    workflow_definitions:{ icon: '⚡', label: 'Workflow' },
+    prompt_library:     { icon: '💬', label: 'Prompty' },
+    test_cases:         { icon: '🧪', label: 'Testy' },
+  };
+
+  const PURPOSE_LABELS = {
+    backup: 'Záloha', migration: 'Migrace', distribution: 'Distribuce',
+    snapshot: 'Snapshot', handoff: 'Předání', sync: 'Synchronizace'
+  };
+
+  function groupByType(payload) {
+    const groups = {};
+    for (const item of payload) {
+      if (!groups[item.type]) groups[item.type] = [];
+      groups[item.type].push(item);
+    }
+    return groups;
+  }
+
+  function renderHero(h) {
+    const t = h.transfer, v = h.version;
+    const purposeLabel = PURPOSE_LABELS[t.purpose] || t.purpose;
+    const sigOk = h.signature?.value && !h.signature.value.includes('DEMO');
+
+    const source = t.source ? `<div class="flow-node"><strong>${esc(t.source.tool)}</strong><br><span style="font-size:11px;color:var(--muted)">${esc(t.source.project_name||t.source.project_id)}</span></div>` : '';
+    const target = t.target ? `<div class="flow-arrow">→</div><div class="flow-node"><strong>${esc(t.target.tool)}</strong>${t.target.hint ? `<br><span style="font-size:11px;color:var(--muted)">${esc(t.target.hint)}</span>` : ''}</div>` : '';
+
+    return `
+      <div class="hero">
+        <div class="hero-title">${esc(t.label)}</div>
+        <div class="hero-sub">Vytvořeno: ${esc(v.created_at?.slice(0,10))} · Snapshot: <span style="font-family:var(--mono);font-size:12px">${esc(v.snapshot_id)}</span></div>
+        <div class="transfer-flow">
+          ${source}${target}
+        </div>
+        <div class="hero-meta">
+          <span class="tag blue">${esc(purposeLabel)}</span>
+          <span class="tag">poly/${esc(h.format?.split('/')[1] || '1.0')}</span>
+          <span class="tag">projekt v${esc(v.project)}</span>
+          <span class="tag">${esc(t.total_items)} položek</span>
+          <span class="tag">${fmtBytes(t.total_size_bytes)} → ${fmtBytes(t.compressed_size_bytes)}</span>
+          <span class="tag">${esc(t.compression || 'bez komprese')}</span>
+        </div>
+        <div class="sig-status ${sigOk ? 'warn' : 'warn'}">
+          ${sigOk ? '✅' : '⚠️'}
+          ${sigOk ? 'Podpis přítomen — ověřit kliknutím na tlačítko' : 'Demo podpis — v produkci použít ES256 signing'}
+          &nbsp;·&nbsp; Algoritmus: ${esc(h.signature?.algorithm || '–')}
+        </div>
+      </div>`;
+  }
+
+  function renderStats(payload, transfer) {
+    const types = new Set(payload.map(i => i.type)).size;
+    const compressed = payload.filter(i => i.compressed).length;
+    const ratio = transfer.total_size_bytes > 0
+      ? Math.round((1 - transfer.compressed_size_bytes / transfer.total_size_bytes) * 100) : 0;
+    return `
+      <div class="stats">
+        <div class="stat"><div class="stat-val">${payload.length}</div><div class="stat-label">Položek celkem</div></div>
+        <div class="stat"><div class="stat-val">${types}</div><div class="stat-label">Typů obsahu</div></div>
+        <div class="stat"><div class="stat-val">${compressed}</div><div class="stat-label">Komprimováno</div></div>
+        <div class="stat"><div class="stat-val">${ratio}%</div><div class="stat-label">Úspora</div></div>
+      </div>`;
+  }
+
+  function renderGroups(payload) {
+    const groups = groupByType(payload);
+    let html = '';
+    for (const [type, items] of Object.entries(groups)) {
+      const meta = TYPE_META[type] || { icon: '📦', label: type };
+      html += `
+        <div class="section-head">
+          <span class="section-title">${meta.icon} ${meta.label}</span>
+          <span class="section-count">${items.length}</span>
+        </div>
+        <div class="items">
+          ${items.map(item => renderItem(item)).join('')}
+        </div>`;
+
+      // Special render for env_schema
+      if (type === 'env_schema') {
+        html += renderEnvSchema(items);
+      }
+    }
+    return html;
+  }
+
+  function renderItem(item) {
+    const meta = TYPE_META[item.type] || { icon: '📦' };
+    const sizeStr = item.compressed_size_bytes
+      ? `${fmtBytes(item.size_bytes)}<span class="compressed">→ ${fmtBytes(item.compressed_size_bytes)} 🗜</span>`
+      : fmtBytes(item.size_bytes || 0);
+    let extra = '';
+    if (item.framework) extra = ` · ${esc(item.framework)}`;
+    if (item.data?.model) extra = ` · ${esc(item.data.model)}`;
+    if (item.data?.service) extra = ` · ${esc(item.data.service)}`;
+    return `
+      <div class="item">
+        <div class="item-icon">${meta.icon}</div>
+        <div>
+          <div class="item-name">${esc(item.label)}</div>
+          <div class="item-id">${esc(item.id)}${extra}</div>
+        </div>
+        <div class="item-version">v${esc(item.version || '?')}</div>
+        <div class="item-size">${sizeStr}</div>
+      </div>`;
+  }
+
+  function renderEnvSchema(items) {
+    let html = '';
+    for (const item of items) {
+      const vars = item.data?.variables || [];
+      if (!vars.length) continue;
+      html += `
+        <div style="margin-top:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <table class="env-table">
+            <thead><tr><th>Klíč</th><th>Typ</th><th>Skupina</th><th>Popis</th><th>Req.</th></tr></thead>
+            <tbody>
+              ${vars.map(v => `
+                <tr>
+                  <td class="env-key">${esc(v.key)}</td>
+                  <td class="env-type">${esc(v.type)}</td>
+                  <td class="env-type">${esc(v.group || '–')}</td>
+                  <td style="color:var(--muted);font-size:12px">${esc(v.description || '')}</td>
+                  <td>${v.required ? '<span class="env-req">✓</span>' : '<span class="env-opt">–</span>'}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+    return html;
+  }
+
+  function renderChangelog(version) {
+    const diff = version.diff;
+    if (!diff) return '';
+    const items = [
+      ...(diff.added || []).map(i => `<div class="diff-item"><span class="diff-add">+</span><span>${esc(i)}</span></div>`),
+      ...(diff.modified || []).map(i => `<div class="diff-item"><span class="diff-mod">~</span><span>${esc(i)}</span></div>`),
+      ...(diff.removed || []).map(i => `<div class="diff-item"><span class="diff-del">−</span><span>${esc(i)}</span></div>`),
+    ];
+    if (!items.length && !version.changelog) return '';
+    return `
+      <div class="changelog">
+        <div class="changelog-title">📝 Změny oproti ${esc(version.previous_snapshot || 'předchozí verze')}</div>
+        ${version.changelog ? `<p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px">${esc(version.changelog)}</p>` : ''}
+        ${items.join('')}
+        ${diff.breaking_changes ? '<div style="margin-top:8px;color:var(--red);font-size:0.82rem;font-weight:600">⚠️ Obsahuje breaking changes!</div>' : ''}
+      </div>`;
+  }
+
+  function init() {
+    const raw = document.getElementById('raw-data')?.textContent;
+    if (!raw) { document.getElementById('app').textContent = 'Chyba: data nenalezena'; return; }
+    try { _doc = JSON.parse(raw); } catch(e) { document.getElementById('app').textContent = 'JSON chyba: ' + e.message; return; }
+
+    const h = _doc.header;
+    const payload = _doc.payload || [];
+    document.title = h.transfer?.label || 'PolyDoc Transfer';
+    document.getElementById('tb-label').textContent = h.transfer?.label || h.doc_id;
+
+    document.getElementById('app').innerHTML =
+      renderHero(h) +
+      renderStats(payload, h.transfer) +
+      renderGroups(payload) +
+      renderChangelog(h.version);
+  }
+
+  return {
+    init,
+    getDoc: () => _doc,
+
+    exportJSON() {
+      const raw = document.getElementById('raw-data').textContent.trim();
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([raw], { type: 'application/json' })),
+        download: `${_doc?.header?.doc_id || 'transfer'}.json`
+      });
+      a.click();
+    },
+
+    verify() {
+      const sig = _doc?.header?.signature;
+      if (!sig) { alert('⚠️ Žádný podpis'); return; }
+      if (sig.value?.includes('DEMO')) {
+        alert('⚠️ Demo podpis — neověřitelný.\n\nV produkci použij ES256 signing\ndle spec/POLYDOC_TRANSFER.md');
+      } else {
+        alert('✅ Podpis ES256 přítomen\nAlgoritmus: ' + sig.algorithm + '\nHash: ' + sig.payload_hash);
+      }
+    },
+
+    copyImportSnippet() {
+      const id = _doc?.header?.doc_id || 'transfer';
+      const types = [...new Set((_doc?.payload||[]).map(i => i.type))];
+      const snippet =
+`import { PolyDocTransfer } from '@polydoc/transfer';
+
+const t = await PolyDocTransfer.load('./${id}.html');
+await t.verify(); // ověř podpis před importem
+
+// Typy v tomto souboru: ${types.join(', ')}
+${types.map(type => `await t.importByType('${type}');`).join('\n')}`;
+      navigator.clipboard.writeText(snippet)
+        .then(() => alert('✅ Import snippet zkopírován do schránky'))
+        .catch(() => alert(snippet));
+    }
+  };
+})();
+
+document.addEventListener('DOMContentLoaded', () => PT.init());
+</script>
+</body>
+</html>
