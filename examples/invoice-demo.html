@@ -424,11 +424,39 @@
     }
 
     /* ── Responsive ──────────────────────────────── */
-    @media (max-width: 720px) {
-      .poly-page { width: 100%; padding: 28px 20px; }
+    @media (max-width: 860px) {
+      .poly-wrap { padding: 72px 12px 48px; }
+      .poly-page { width: 100%; min-height: unset; padding: 36px 28px; }
+    }
+    @media (max-width: 640px) {
+      /* Toolbar */
+      #poly-toolbar { height: auto; flex-wrap: wrap; padding: 10px 14px; gap: 8px; }
+      .tb-left { flex: 1 0 100%; }
+      .tb-right { flex-wrap: wrap; gap: 5px; }
+      .tb-btn { padding: 6px 10px; font-size: 0.76rem; }
+      #tb-title { display: none; }
+
+      /* Page */
+      .poly-wrap { padding: 70px 8px 32px; }
+      .poly-page { padding: 24px 16px; border-radius: 0; }
+
+      /* Parties */
       .poly-parties { grid-template-columns: 1fr; }
-      .poly-doc-header { flex-direction: column; gap: 16px; }
+      .poly-doc-header { flex-direction: column; gap: 12px; }
       .poly-doc-meta { text-align: left; }
+
+      /* Table — horizontal scroll */
+      .poly-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .poly-table { min-width: 480px; }
+
+      /* Agent view */
+      .agent-fields { grid-template-columns: 1fr 1fr; }
+      .agent-json { font-size: 0.72rem; }
+    }
+    @media (max-width: 400px) {
+      .tb-right { gap: 4px; }
+      .tb-btn { padding: 5px 8px; font-size: 0.72rem; }
+      .agent-fields { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -638,7 +666,7 @@
     <div id="agent-view"></div>
     <div class="poly-doc-footer">
       <span id="footer-id"></span>
-      <span>PolyDoc · <a href="https://github.com/mastervector-svg/polydoc" target="_blank">github.com/mastervector-svg/polydoc</a></span>
+      <span id="footer-spec"></span>
     </div>
     <div class="poly-badge" id="poly-badge">
       <div class="poly-badge-left">
@@ -958,7 +986,16 @@ const PolyDoc = (() => {
 
     const footerId = document.getElementById('footer-id');
     if (footerId) footerId.textContent =
-      `${_doc.header?.doc_id || ''} · poly/1.0 · ${_doc.header?.created?.slice(0, 10) || ''}`;
+      `${_doc.header?.doc_id || ''} · ${_doc.header?.format || 'poly/1.0'} · ${_doc.header?.created?.slice(0, 10) || ''}`;
+
+    const footerSpec = document.getElementById('footer-spec');
+    if (footerSpec) {
+      const specUrl = _doc.header?.spec;
+      const format  = _doc.header?.format || 'poly/1.0';
+      footerSpec.innerHTML = specUrl
+        ? `<a href="${specUrl}" target="_blank" rel="noopener">📄 spec ${format}</a> · <a href="https://github.com/mastervector-svg/polydoc" target="_blank" rel="noopener">github.com/mastervector-svg/polydoc</a>`
+        : `PolyDoc · <a href="https://github.com/mastervector-svg/polydoc" target="_blank" rel="noopener">github.com/mastervector-svg/polydoc</a>`;
+    }
 
     applyVisuals(_doc.visuals);
     _state = { ..._doc.logic?.demo_state };
