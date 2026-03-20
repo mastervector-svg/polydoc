@@ -21,8 +21,13 @@ Click the button → full interactive version loads on your server.
 
 ## Live Demo
 
+[![Invoice demo — click to open interactive document](docs/preview.png)](https://mastervector-svg.github.io/polydoc/examples/invoice-demo.html)
+
+*Click the image to open the interactive document. Switch language with the 🌐 button.*
+
 | Document | Link |
 |----------|------|
+| **Invoice demo (EN/CS)** | [invoice-demo.html](https://mastervector-svg.github.io/polydoc/examples/invoice-demo.html) |
 | Invoice — full interactive | [faktura-full.html](https://mastervector-svg.github.io/polydoc/examples/faktura-full.html) |
 | Invoice — static mail version | [faktura-mail.html](https://mastervector-svg.github.io/polydoc/examples/faktura-mail.html) |
 | Real estate portal — transfer package | [realportal-transfer.html](https://mastervector-svg.github.io/polydoc/examples/realportal-transfer.html) |
