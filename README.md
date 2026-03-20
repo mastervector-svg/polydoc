@@ -1,5 +1,10 @@
 # PolyDoc
 
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Format](https://img.shields.io/badge/format-poly%2F1.0-blue.svg)](spec/POLYDOC_SPEC.md)
+[![No dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)]()
+[![Free forever](https://img.shields.io/badge/price-%240-brightgreen.svg)]()
+
 **One file. Machine-readable data. Human-readable document. Works everywhere.**
 
 ```html
@@ -12,10 +17,12 @@
 </script>
 ```
 
-Open it in a browser → you see a beautiful document.  
-Feed it to an LLM → it reads the JSON directly.  
-Send it as email → static version passes every firewall.  
+Open it in a browser → you see a beautiful document.
+Feed it to an LLM → it reads the JSON directly.
+Send it as email → static version passes every firewall.
 Click the button → full interactive version loads on your server.
+
+**MIT. Free. No SDK. No account. No bullshit.**
 
 ---
 
@@ -23,11 +30,11 @@ Click the button → full interactive version loads on your server.
 
 [![Invoice demo — click to open interactive document](docs/preview.png)](https://mastervector-svg.github.io/polydoc/examples/invoice-demo.html)
 
-*Click the image to open the interactive document. Switch language with the 🌐 button.*
+*Click the image → interactive document opens. Toggle 🌐 for language switch. Toggle 🤖 to see what the LLM reads.*
 
 | Document | Link |
 |----------|------|
-| **Invoice demo (EN/CS)** | [invoice-demo.html](https://mastervector-svg.github.io/polydoc/examples/invoice-demo.html) |
+| **Invoice demo (EN/CS, Human/Agent view)** | [invoice-demo.html](https://mastervector-svg.github.io/polydoc/examples/invoice-demo.html) |
 | Invoice — full interactive | [faktura-full.html](https://mastervector-svg.github.io/polydoc/examples/faktura-full.html) |
 | Invoice — static mail version | [faktura-mail.html](https://mastervector-svg.github.io/polydoc/examples/faktura-mail.html) |
 | Real estate portal — transfer package | [realportal-transfer.html](https://mastervector-svg.github.io/polydoc/examples/realportal-transfer.html) |
@@ -36,14 +43,15 @@ Click the button → full interactive version loads on your server.
 
 ## The Problem
 
-Modern business communication is broken:
+You're in 2026. AI runs half your workflow. And you're still emailing PDF attachments.
 
-| Format | Problem |
-|--------|---------|
-| **PDF** | Static, machine-unreadable, expensive to generate |
-| **DOCX** | Binary XML mess, requires Microsoft ecosystem |
-| **Plain JSON** | Can't be opened directly, needs a viewer |
-| **Email HTML** | Clients block JavaScript, no interactivity |
+| Format | Problem | Price |
+|--------|---------|-------|
+| **PDF** | Static, machine-unreadable, OCR to read it back | Adobe: $20/mo |
+| **DOCX** | Binary XML, requires Microsoft ecosystem | M365: $13/user/mo |
+| **DocuSign / PandaDoc** | Portal login, vendor lock-in, API costs | $25–$65/mo |
+| **Plain JSON** | Can't be opened directly, needs a viewer | — |
+| **PolyDoc** | ✅ One HTML file, works everywhere, AI-native | **$0. MIT. Forever.** |
 
 Every tool forces you to choose between **human-readable** and **machine-readable**. PolyDoc refuses that tradeoff.
 
@@ -55,7 +63,7 @@ A single `.html` file that is simultaneously:
 
 - ✅ **A document** — open in any browser, print to PDF, looks professional
 - ✅ **A database** — structured JSON inside, parseable by any tool or LLM
-- ✅ **An API response** — AI agents can render and send documents via Channel API
+- ✅ **An API response** — AI agents render and deliver via Channel API
 - ✅ **An email** — static mail version passes every spam filter and firewall
 - ✅ **A transfer container** — ship entire project configs, agent setups, knowledge bases
 
@@ -69,11 +77,11 @@ Invoices, confirmations, offers, contracts.
 ```
 IS/Backend → generates PolyDoc → sends as email body (static)
                                 → stores on server (interactive)
-User clicks → full version loads → can confirm, download, verify signature
+User clicks → full version loads → confirm, download, verify signature
 ```
 
 ### 2. AI Channel (DisplayPort for AI)
-AI agents use the [Channel API](spec/openapi.yaml) to render and deliver documents to users. One OpenAPI spec — any LLM understands it immediately.
+AI agents use the [Channel API](spec/openapi.yaml) to render and deliver documents. One OpenAPI spec — any LLM understands it immediately. No prompt engineering. The spec is the instruction.
 
 ```
 User: "Send Novák an invoice for consulting"
@@ -81,7 +89,7 @@ Claude: reads Channel API → assembles JSON → POST /render → shares html_ur
 ```
 
 ### 3. Transfer Format
-Move entire projects between tools (Lovable → Cursor → your IS). Agent configs, knowledge bases, frontend structures, connector settings — all in one signed, versioned, optionally compressed file.
+Move entire projects between tools (Lovable → Cursor → your IS). Agent configs, knowledge bases, frontend structures — all in one signed, versioned, optionally compressed file.
 
 ```
 Lovable export → polydoc-transfer.html → Cursor import
@@ -99,7 +107,7 @@ Lovable export → polydoc-transfer.html → Cursor import
 - **Self-describing** — the spec URL is inside every document
 - **Print-ready** — CSS print styles built in
 
-The `.html` extension is a deliberate choice. We could invent `.poly` or `.pdoc`. We didn't. Because the best format is the one that works everywhere, right now, without asking IT for permission.
+We could invent `.poly` or `.pdoc`. We didn't. Because the best format is the one that works everywhere, right now, without asking IT for permission.
 
 ---
 
@@ -121,10 +129,10 @@ Every PolyDoc exists in two versions generated from the same JSON:
                               hosted on your server or downloadable
 ```
 
-**The firewall bypass strategy:**  
-Mail is static → passes every corporate filter.  
-User wants interactivity → clicks to full version.  
-User asks IT to whitelist your domain.  
+**The firewall bypass strategy:**
+Mail is static → passes every corporate filter.
+User wants interactivity → clicks to full version.
+User asks IT to whitelist your domain.
 IT cannot say no because the user is asking.
 
 ---
@@ -135,12 +143,17 @@ IT cannot say no because the user is asking.
 {
   "header": {
     "format": "poly/1.0",
-    "spec": "https://github.com/polydoc/spec",
+    "spec": "https://github.com/mastervector-svg/polydoc/blob/master/spec/POLYDOC_SPEC.md",
     "doc_id": "INV-2026-001",
     "doc_type": "invoice",
-    "signature": { "algorithm": "ES256", "value": "..." }
+    "signature": { "algorithm": "ES256", "value": "..." },
+    "compression": { "algorithm": "deflate", "threshold": 10240 }
   },
-  "metadata": { "title": "Invoice", "tags": ["invoice", "2026"] },
+  "metadata": {
+    "title": { "en": "Invoice", "cs": "Faktura" },
+    "language": "en",
+    "languages": ["en", "cs"]
+  },
   "content": {
     "type": "document",
     "sections": [
@@ -155,6 +168,8 @@ IT cannot say no because the user is asking.
   }
 }
 ```
+
+Validate against [`schema/poly-v1.0.schema.json`](schema/poly-v1.0.schema.json).
 
 ---
 
@@ -173,12 +188,20 @@ polydoc/
 │   ├── DEPLOYMENT_REALTY.md     ← deployment guide: real estate portal
 │   └── openapi.yaml             ← Channel API (OpenAPI 3.1)
 │
+├── schema/
+│   └── poly-v1.0.schema.json    ← JSON Schema validator (IDE autocomplete)
+│
+├── server/                      ← Node.js render engine (Express)
+│   ├── index.js                 ← POST /render, POST /validate, GET /schema
+│   └── engine.js                ← renderFull, renderMail, DEFLATE compression
+│
 ├── templates/
 │   ├── polydoc-full.html        ← full interactive template
 │   ├── polydoc-mail.html        ← static mail template
 │   └── polydoc-transfer.html    ← transfer viewer template
 │
 ├── examples/
+│   ├── invoice-demo.html        ← bilingual EN/CS demo + Human/Agent toggle
 │   ├── faktura-full.html        ← invoice example (full)
 │   ├── faktura-mail.html        ← invoice example (mail)
 │   └── realportal-transfer.html ← real estate project transfer
@@ -197,23 +220,24 @@ polydoc/
 
 ## Quickstart
 
-**Render your first document:**
+**Open the demo:**
 ```bash
-# Clone the repo
-git clone https://gitlab.com/polydoc/polydoc.git
+git clone https://github.com/mastervector-svg/polydoc.git
 cd polydoc
-
-# Open the example invoice in your browser
-open examples/faktura-full.html
-
-# Or open the transfer example
-open examples/realportal-transfer.html
+open examples/invoice-demo.html   # macOS
+xdg-open examples/invoice-demo.html  # Linux
 ```
 
 **Use the template:**
 1. Copy `templates/polydoc-full.html`
 2. Replace the JSON in `<script type="application/poly+json" id="raw-data">`
-3. Open in browser
+3. Open in browser — done
+
+**Run the render engine:**
+```bash
+cd server && npm install && npm start
+# POST /render with PolyDoc JSON → get html_url + mail_html
+```
 
 **Backend integration (PHP):**
 ```php
@@ -226,12 +250,13 @@ $html = preg_replace(
 );
 ```
 
-**AI agent (Channel API):**
+**AI agent:**
 ```
-Give any LLM the openapi.yaml and it immediately knows how to:
+Give any LLM the openapi.yaml — it immediately knows how to:
 - render documents for your users
 - create transfer packages
 - validate and sign documents
+No prompt engineering. The spec is the instruction.
 ```
 
 ---
@@ -240,42 +265,67 @@ Give any LLM the openapi.yaml and it immediately knows how to:
 
 ### v1.0 (current)
 - [x] Core format spec (header, metadata, content, visuals, logic)
+- [x] Multilingual support (`LocalizedString` — `{"en":"...","cs":"..."}`)
 - [x] Section types: header, party, table, image, rich_text, checklist
-- [x] Full interpreter (inline, single-file)
-- [x] Mail template (static, no JS, table layout)
+- [x] Full interpreter (inline, single-file, zero dependencies)
+- [x] Mail template (static, no JS, Outlook-compatible)
 - [x] Transfer format spec
 - [x] Channel API (OpenAPI 3.1)
-- [x] Deployment guide (real estate portal)
+- [x] JSON Schema (`schema/poly-v1.0.schema.json`)
+- [x] Node.js render engine (POST /render, POST /validate)
+- [x] DEFLATE compression + AES-256-GCM encryption spec
+- [x] Lazy load spec (inline / on-demand modes)
+- [x] Human/Agent view toggle (demo)
 
 ### v1.1
 - [ ] Shared interpreter on CDN (`poly-interpreter.js`)
-- [ ] SubtleCrypto signature verification
-- [ ] DOMPurify integration
+- [ ] SubtleCrypto signature verification (browser)
+- [ ] `npx polydoc render invoice.json` CLI
+- [ ] DOMPurify integration for `rich_text`
 - [ ] More themes (dark, classic, minimal)
-- [ ] CLI tool (`npx polydoc render invoice.json`)
 
 ### v2.0
-- [ ] JSON Schema validator
 - [ ] WYSIWYG editor
-- [ ] Official tool integrations (Lovable, Cursor, n8n)
+- [ ] Official integrations (Lovable, Cursor, n8n)
 - [ ] Offline-first (Service Worker)
 
 ---
 
 ## License
 
-MIT — format spec, templates, interpreter, tools. Everything.  
-Build on it. Ship it. Don't ask.
+**MIT. Everything. Forever.**
+
+Format spec, templates, interpreter, render engine, JSON Schema, examples — all MIT.
+Build on it. Ship it. Sell it. Don't ask.
+
+No "community edition". No "enterprise tier". No usage limits.
+If you need PDF generation, DocuSign, or PandaDoc — you're paying for something PolyDoc does for free.
+
+---
+
+## Support & Hire Us
+
+PolyDoc is free. If it saves you money or time:
+
+☕ **Buy us a coffee** — [ko-fi.com](https://ko-fi.com) *(link coming soon)*
+
+🚀 **Hire us for a real project** — We design systems like this for a living.
+Automation, AI document workflows, IS integrations, custom PolyDoc deployments.
+If you can imagine it and it makes business sense, we can build it.
+
+> *"This is what we come up with for fun. Imagine what we do when you pay us."*
+
+📬 Open an issue or start a discussion — we read everything.
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).  
-Issues, PRs, and spec discussions welcome.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+Issues, PRs, and spec proposals welcome.
 
-The spec lives in `spec/POLYDOC_SPEC.md`. Propose changes via MR.
+The spec lives in `spec/POLYDOC_SPEC.md`. If you use PolyDoc in production, open an issue — we want to know.
 
 ---
 
-*PolyDoc v1.0 · [Spec](spec/POLYDOC_SPEC.md) · [Channel API](spec/openapi.yaml) · MIT*
+*PolyDoc v1.0 · [Spec](spec/POLYDOC_SPEC.md) · [Channel API](spec/openapi.yaml) · [JSON Schema](schema/poly-v1.0.schema.json) · MIT*
