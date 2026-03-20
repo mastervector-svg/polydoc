@@ -1,0 +1,421 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/mastervector-svg/polydoc/raw/master/schema/poly-v1.0.schema.json",
+  "title": "PolyDoc v1.0",
+  "description": "PolyDoc document format — one file, machine-readable data, human-readable document.",
+  "type": "object",
+  "required": ["header", "content"],
+  "additionalProperties": true,
+
+  "definitions": {
+
+    "localizedString": {
+      "description": "A plain string or an object with BCP-47 language keys.",
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "string" }
+        }
+      ]
+    },
+
+    "lazyFields": {
+      "description": "Mixin fields available on any section that supports lazy loading.",
+      "properties": {
+        "lazy":            { "type": "boolean", "description": "Defer rendering until visible or explicitly fetched." },
+        "lazy_mode":       { "type": "string", "enum": ["inline", "on-demand"] },
+        "lazy_label":      { "type": "string", "description": "Placeholder label shown before the section is loaded." },
+        "src":             { "type": "string", "format": "uri", "description": "URL to fetch section content from when lazy mode is on-demand." },
+        "compressed":      { "type": "boolean" },
+        "data":            { "type": "string", "description": "Base64-encoded deflate-compressed payload." },
+        "original_size":   { "type": "integer", "minimum": 0 },
+        "compressed_size": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "headerSection": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "header" },
+        "elements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type":  { "type": "string", "enum": ["heading", "paragraph", "image"] },
+              "level": { "type": "integer", "minimum": 1, "maximum": 6 },
+              "text":  { "$ref": "#/definitions/localizedString" },
+              "src":   { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "allOf": [{ "$ref": "#/definitions/lazyFields" }]
+    },
+
+    "partySection": {
+      "type": "object",
+      "required": ["type", "role", "data"],
+      "properties": {
+        "type": { "type": "string", "const": "party" },
+        "role": { "type": "string", "enum": ["supplier", "client", "guarantor", "agent"] },
+        "data": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "name":    { "type": "string" },
+            "id":      { "type": "string" },
+            "address": { "type": "string" },
+            "bank":    { "type": "string" },
+            "email":   { "type": "string" }
+          }
+        }
+      },
+      "allOf": [{ "$ref": "#/definitions/lazyFields" }]
+    },
+
+    "tableSection": {
+      "type": "object",
+      "required": ["type", "columns", "rows"],
+      "properties": {
+        "type": { "type": "string", "const": "table" },
+        "id":   { "type": "string" },
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/localizedString" }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "number" },
+                { "type": "object", "additionalProperties": { "type": "string" } }
+              ]
+            }
+          }
+        },
+        "footer": {
+          "type": "object",
+          "required": ["total", "currency"],
+          "properties": {
+            "total":    { "type": "number" },
+            "currency": { "type": "string", "description": "ISO 4217 currency code, e.g. CZK, EUR, USD." },
+            "vat_rate": { "type": "number", "minimum": 0, "maximum": 100 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "allOf": [{ "$ref": "#/definitions/lazyFields" }]
+    },
+
+    "imageSection": {
+      "type": "object",
+      "required": ["type", "src", "alt"],
+      "properties": {
+        "type":      { "type": "string", "const": "image" },
+        "src":       { "type": "string" },
+        "alt":       { "type": "string" },
+        "width":     { "type": "string" },
+        "caption":   { "type": "string" }
+      },
+      "allOf": [{ "$ref": "#/definitions/lazyFields" }]
+    },
+
+    "richTextSection": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type":       { "type": "string", "const": "rich_text" },
+        "html":       { "type": "string" },
+        "lazy_label": { "type": "string" },
+        "src":        { "type": "string", "format": "uri" }
+      },
+      "allOf": [{ "$ref": "#/definitions/lazyFields" }]
+    },
+
+    "checklistSection": {
+      "type": "object",
+      "required": ["type", "items"],
+      "properties": {
+        "type": { "type": "string", "const": "checklist" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["text", "checked"],
+            "properties": {
+              "text":    { "$ref": "#/definitions/localizedString" },
+              "checked": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "allOf": [{ "$ref": "#/definitions/lazyFields" }]
+    },
+
+    "paragraphSection": {
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "type": "string", "const": "paragraph" },
+        "text": { "$ref": "#/definitions/localizedString" }
+      },
+      "allOf": [{ "$ref": "#/definitions/lazyFields" }]
+    },
+
+    "dividerSection": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "divider" }
+      },
+      "additionalProperties": false
+    },
+
+    "signatureBlockSection": {
+      "type": "object",
+      "required": ["type", "label"],
+      "properties": {
+        "type":  { "type": "string", "const": "signature_block" },
+        "label": { "$ref": "#/definitions/localizedString" }
+      },
+      "allOf": [{ "$ref": "#/definitions/lazyFields" }]
+    },
+
+    "customSection": {
+      "type": "object",
+      "required": ["type", "data"],
+      "properties": {
+        "type": { "type": "string", "const": "custom" },
+        "data": { "type": "object", "additionalProperties": true }
+      },
+      "allOf": [{ "$ref": "#/definitions/lazyFields" }]
+    },
+
+    "section": {
+      "oneOf": [
+        { "$ref": "#/definitions/headerSection" },
+        { "$ref": "#/definitions/partySection" },
+        { "$ref": "#/definitions/tableSection" },
+        { "$ref": "#/definitions/imageSection" },
+        { "$ref": "#/definitions/richTextSection" },
+        { "$ref": "#/definitions/checklistSection" },
+        { "$ref": "#/definitions/paragraphSection" },
+        { "$ref": "#/definitions/dividerSection" },
+        { "$ref": "#/definitions/signatureBlockSection" },
+        { "$ref": "#/definitions/customSection" }
+      ]
+    }
+  },
+
+  "properties": {
+
+    "header": {
+      "type": "object",
+      "required": ["format", "doc_id", "doc_type"],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "string",
+          "pattern": "^poly/\\d+\\.\\d+$",
+          "description": "Format version, e.g. poly/1.0"
+        },
+        "doc_id": {
+          "type": "string",
+          "description": "Unique document identifier, e.g. INV-2026-042"
+        },
+        "doc_type": {
+          "type": "string",
+          "enum": ["invoice", "confirmation", "offer", "status_update", "report", "transfer", "contract"],
+          "description": "Semantic document type."
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 creation timestamp."
+        },
+        "generator": {
+          "type": "string",
+          "description": "Name and version of the tool that generated this document."
+        },
+        "spec": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL pointing to the PolyDoc spec this document conforms to."
+        },
+        "signature": {
+          "type": "object",
+          "required": ["algorithm", "value", "public_key"],
+          "additionalProperties": false,
+          "properties": {
+            "algorithm":  { "type": "string", "const": "ES256" },
+            "value":      { "type": "string", "description": "Base64url-encoded signature." },
+            "public_key": { "type": "string", "description": "Base64url-encoded DER public key." }
+          }
+        },
+        "compression": {
+          "type": "object",
+          "required": ["algorithm"],
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": { "type": "string", "const": "deflate" },
+            "threshold": { "type": "integer", "minimum": 0, "default": 10240, "description": "Compress sections larger than this many bytes." }
+          }
+        },
+        "encryption": {
+          "type": "object",
+          "required": ["algorithm", "key_location", "iv"],
+          "additionalProperties": false,
+          "properties": {
+            "algorithm":    { "type": "string", "const": "AES-256-GCM" },
+            "key_location": { "type": "string", "const": "url_fragment", "description": "Key is passed in the URL fragment (#key=...) and never sent to the server." },
+            "iv":           { "type": "string", "description": "Base64-encoded 12-byte initialization vector." }
+          }
+        },
+        "access": {
+          "type": "object",
+          "required": ["mode"],
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "type": "string", "enum": ["public", "token", "encrypted"] },
+            "hint": { "type": "string", "description": "Human-readable hint for how to obtain access." }
+          }
+        },
+        "lazy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "threshold":    { "type": "integer", "minimum": 0, "default": 51200, "description": "Sections larger than this many bytes are candidates for lazy loading." },
+            "default_mode": { "type": "string", "enum": ["inline", "on-demand"] }
+          }
+        }
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title":         { "$ref": "#/definitions/localizedString" },
+        "language":      { "type": "string", "description": "Primary language, BCP 47 tag, e.g. cs, en." },
+        "languages":     { "type": "array", "items": { "type": "string" }, "description": "All languages present in this document." },
+        "author":        { "type": "string" },
+        "tags":          { "type": "array", "items": { "type": "string" } },
+        "custom_fields": { "type": "object", "additionalProperties": true }
+      }
+    },
+
+    "content": {
+      "type": "object",
+      "required": ["type", "sections"],
+      "additionalProperties": false,
+      "properties": {
+        "type":     { "type": "string", "const": "document" },
+        "sections": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/section" }
+        }
+      }
+    },
+
+    "visuals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "theme":     { "type": "string", "enum": ["modern-clean", "modern-dark", "classic", "minimal"] },
+        "page_size": { "type": "string", "enum": ["A4", "Letter"] },
+        "font":      { "type": "string" },
+        "colors": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "primary": { "type": "string", "description": "CSS color value, e.g. #0d6efd" },
+            "accent":  { "type": "string", "description": "CSS color value, e.g. #ffc107" }
+          }
+        }
+      }
+    },
+
+    "i18n": {
+      "type": "object",
+      "description": "UI label translations keyed by BCP-47 language tag.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      }
+    },
+
+    "logic": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dynamic": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["trigger", "action", "api_url", "target_field"],
+            "additionalProperties": false,
+            "properties": {
+              "trigger":      { "type": "string", "const": "onLoad" },
+              "action":       { "type": "string", "const": "fetchStatus" },
+              "api_url":      { "type": "string", "format": "uri" },
+              "target_field": { "type": "string" }
+            }
+          }
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["field", "value", "banner"],
+            "additionalProperties": false,
+            "properties": {
+              "field": { "type": "string" },
+              "value": {},
+              "banner": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "text":     { "type": "string" },
+                  "text_key": { "type": "string", "description": "i18n key; resolved via the i18n block at runtime." },
+                  "style":    { "type": "string", "enum": ["success", "warning", "danger", "info"] }
+                }
+              }
+            }
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["api_url", "method"],
+            "additionalProperties": false,
+            "properties": {
+              "label":           { "type": "string" },
+              "label_key":       { "type": "string", "description": "i18n key for the button label." },
+              "api_url":         { "type": "string", "format": "uri" },
+              "method":          { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE"] },
+              "success_message": { "type": "string" },
+              "success_key":     { "type": "string", "description": "i18n key for the success message." }
+            }
+          }
+        },
+        "demo_state": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Initial state values used when live API calls are unavailable."
+        }
+      }
+    }
+
+  }
+}
