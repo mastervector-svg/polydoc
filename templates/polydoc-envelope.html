@@ -228,7 +228,7 @@
     </div>
 
     <div class="sig-box" id="sig-box" style="display:none;">
-      ✅ <span id="sig-text">Podpis manifestu ověřen</span>
+      ✅ <span id="sig-text">Manifest signature verified</span>
     </div>
 
     <div class="mail-banner" id="mail-banner" style="display:none;">
@@ -237,29 +237,29 @@
 
     <div class="manifest-info" id="manifest-info" style="display:none;">
       <div class="row"><strong>Doc ID</strong><span id="info-docid">—</span></div>
-      <div class="row"><strong>Vytvořeno</strong><span id="info-created">—</span></div>
+      <div class="row"><strong>Created</strong><span id="info-created">—</span></div>
       <div class="row" id="info-sender-row" style="display:none;">
-        <strong>Odesílatel</strong><span id="info-sender">—</span>
+        <strong>Sender</strong><span id="info-sender">—</span>
       </div>
       <div class="row" id="info-recipients-row" style="display:none;">
-        <strong>Příjemci</strong><span id="info-recipients">—</span>
+        <strong>Recipients</strong><span id="info-recipients">—</span>
       </div>
     </div>
 
-    <div class="parts-heading">Části zásilky</div>
+    <div class="parts-heading">Shipment parts</div>
     <div id="parts-list"></div>
 
     <div class="env-footer">
       <a href="https://github.com/mastervector-svg/polydoc" target="_blank">PolyDoc</a>
-      · poly/1.0 · MIT · Envelope formát
+      · poly/1.0 · MIT · Envelope format
     </div>
   </div>
 
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal">
       <div class="modal-head">
-        <h2 id="modal-title">Část</h2>
-        <button class="modal-close" id="modal-close" title="Zavřít">✕</button>
+        <h2 id="modal-title">Part</h2>
+        <button class="modal-close" id="modal-close" title="Close">✕</button>
       </div>
       <div class="modal-body" id="modal-body"></div>
     </div>
@@ -395,8 +395,8 @@
       } else {
         const blob = new Blob([content], {type: mimeType || 'application/octet-stream'});
         html = '<div class="content-download">'
-          + '<div>Typ ' + (mimeType || 'neznámý') + ' nelze zobrazit přímo.</div>'
-          + '<a class="btn btn-primary dl-btn" href="' + URL.createObjectURL(blob) + '" download="' + title.replace(/\s+/g,'_') + '">⬇ Stáhnout</a>'
+          + '<div>Type ' + (mimeType || 'unknown') + ' cannot be displayed inline.</div>'
+          + '<a class="btn btn-primary dl-btn" href="' + URL.createObjectURL(blob) + '" download="' + title.replace(/\s+/g,'_') + '">⬇ Download</a>'
           + '</div>';
       }
       openModal(title, html);

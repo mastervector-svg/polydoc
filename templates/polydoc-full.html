@@ -285,7 +285,7 @@
 <body>
 
 <!-- ══════════════════════════════════════════════════════
-     POLY DATA — nahraď JSON svými daty
+     POLY DATA — replace JSON with your own data
      ══════════════════════════════════════════════════════ -->
 <script type="application/poly+json" id="raw-data">
 {
@@ -298,10 +298,10 @@
     "generator": "PolyDoc v1.0"
   },
   "metadata": {
-    "title": "Faktura INV-2026-042",
-    "language": "cs",
-    "author": "Jan Novák",
-    "tags": ["faktura", "2026", "acme"],
+    "title": "Invoice INV-2026-042",
+    "language": "en",
+    "author": "John Smith",
+    "tags": ["invoice", "2026", "acme"],
     "custom_fields": {
       "vs": "20260042",
       "ks": "0308",
@@ -314,62 +314,62 @@
       {
         "type": "header",
         "elements": [
-          { "type": "heading", "level": 1, "text": "Faktura" },
-          { "type": "paragraph", "text": "Číslo: INV-2026-042" },
-          { "type": "paragraph", "text": "Datum vystavení: 12. 3. 2026  ·  Splatnost: 12. 4. 2026" }
+          { "type": "heading", "level": 1, "text": "Invoice" },
+          { "type": "paragraph", "text": "Number: INV-2026-042" },
+          { "type": "paragraph", "text": "Issue date: 12 Mar 2026  ·  Due: 12 Apr 2026" }
         ]
       },
       {
         "type": "party",
         "role": "supplier",
         "data": {
-          "name": "Jan Novák s.r.o.",
-          "id": "CZ87654321",
-          "address": "Příkop 4, 602 00 Brno",
-          "bank": "CZ6508000000192000145399",
-          "email": "fakturace@example.cz"
+          "name": "John Smith Ltd.",
+          "id": "GB87654321",
+          "address": "Example St. 4, London EC1A 1BB",
+          "bank": "GB29NWBK60161331926819",
+          "email": "invoicing@example.com"
         }
       },
       {
         "type": "party",
         "role": "client",
         "data": {
-          "name": "Acme Corp s.r.o.",
-          "id": "CZ12345678",
-          "address": "Václavské nám. 1, 110 00 Praha 1"
+          "name": "Acme Corp Ltd.",
+          "id": "GB12345678",
+          "address": "1 Market Square, Manchester M1 1AE"
         }
       },
       {
         "type": "table",
         "id": "items",
-        "columns": ["Popis", "Množství", "Jedn. cena", "Celkem"],
+        "columns": ["Description", "Qty", "Unit price", "Total"],
         "rows": [
-          ["Analýza a audit dokumentového workflow", 5, "2 000 Kč", "10 000 Kč"],
-          ["Implementace PolyDoc formátu", 10, "2 500 Kč", "25 000 Kč"],
-          ["Školení týmu (2 osoby, 1 den)", 2, "1 500 Kč", "3 000 Kč"]
+          ["Document workflow analysis & audit", 5, "$200", "$1,000"],
+          ["PolyDoc format implementation", 10, "$250", "$2,500"],
+          ["Team training (2 people, 1 day)", 2, "$150", "$300"]
         ],
         "footer": {
-          "total": 38000,
-          "currency": "CZK",
-          "vat_rate": 21
+          "total": 3800,
+          "currency": "USD",
+          "vat_rate": 20
         }
       },
       {
         "type": "rich_text",
-        "html": "<p><strong>Platební podmínky:</strong> Platba převodem do 30 dnů od vystavení. Variabilní symbol: <strong>20260042</strong>. Konstantní symbol: 0308. Děkujeme za spolupráci.</p>"
+        "html": "<p><strong>Payment terms:</strong> Bank transfer within 30 days of issue. Reference: <strong>20260042</strong>. Thank you for your business.</p>"
       },
       {
         "type": "checklist",
         "items": [
-          { "text": "Odesláno emailem zákazníkovi", "checked": true },
-          { "text": "Zaúčtováno v IS", "checked": true },
-          { "text": "Platba přijata na účet", "checked": false }
+          { "text": "Sent to customer by email", "checked": true },
+          { "text": "Recorded in accounting system", "checked": true },
+          { "text": "Payment received", "checked": false }
         ]
       },
       { "type": "divider" },
       {
         "type": "paragraph",
-        "text": "Vystavil: Jan Novák  ·  jan.novak@example.cz  ·  +420 777 123 456"
+        "text": "Issued by: John Smith  ·  john.smith@example.com  ·  +1 555 123 4567"
       }
     ]
   },
@@ -386,7 +386,7 @@
       {
         "trigger": "onLoad",
         "action": "fetchStatus",
-        "api_url": "https://api.example.cz/doc/INV-2026-042/status",
+        "api_url": "https://api.example.com/doc/INV-2026-042/status",
         "target_field": "is_paid"
       }
     ],
@@ -394,20 +394,20 @@
       {
         "field": "is_paid",
         "value": true,
-        "banner": { "text": "✅ ZAPLACENO — děkujeme za platbu!", "style": "success" }
+        "banner": { "text": "✅ PAID — thank you for your payment!", "style": "success" }
       },
       {
         "field": "is_paid",
         "value": false,
-        "banner": { "text": "⏳ Čeká na platbu · Splatnost: 12. 4. 2026", "style": "warning" }
+        "banner": { "text": "⏳ Awaiting payment · Due: 12 Apr 2026", "style": "warning" }
       }
     ],
     "actions": [
       {
-        "label": "✅ Potvrdit přijetí",
-        "api_url": "https://api.example.cz/doc/INV-2026-042/confirm",
+        "label": "✅ Confirm receipt",
+        "api_url": "https://api.example.com/doc/INV-2026-042/confirm",
         "method": "POST",
-        "success_message": "Děkujeme za potvrzení!"
+        "success_message": "Thank you for confirming!"
       }
     ],
     "demo_state": {
@@ -424,10 +424,10 @@
     <span id="tb-title">…</span>
   </div>
   <div class="tb-right">
-    <button class="tb-btn" onclick="PolyDoc.toggleDemo()">🔄 Demo stav</button>
-    <button class="tb-btn" onclick="PolyDoc.verify()">🔏 Ověřit</button>
+    <button class="tb-btn" onclick="PolyDoc.toggleDemo()">🔄 Demo state</button>
+    <button class="tb-btn" onclick="PolyDoc.verify()">🔏 Verify</button>
     <button class="tb-btn" onclick="PolyDoc.exportJSON()">⬇ JSON</button>
-    <button class="tb-btn accent" onclick="window.print()">🖨 Tisk / PDF</button>
+    <button class="tb-btn accent" onclick="window.print()">🖨 Print / PDF</button>
   </div>
 </div>
 
@@ -435,7 +435,7 @@
 <div class="poly-wrap">
   <div class="poly-page">
     <div id="poly-banner"></div>
-    <div id="app">Načítám…</div>
+    <div id="app">Loading…</div>
     <div class="poly-doc-footer">
       <span id="footer-id"></span>
       <span>PolyDoc · <a href="https://github.com/polydoc/spec" target="_blank">spec v1.0</a></span>
@@ -453,7 +453,7 @@ const PolyDoc = (() => {
   const esc = s => String(s ?? '').replace(/[&<>"']/g,
     m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
 
-  const fmt = (n, cur) => Number(n).toLocaleString('cs-CZ') + (cur ? ' ' + cur : '');
+  const fmt = (n, cur) => Number(n).toLocaleString('en-US') + (cur ? ' ' + cur : '');
 
   // ── Renderers ──────────────────────────────────────────
   function renderSection(s) {
@@ -483,12 +483,12 @@ const PolyDoc = (() => {
 
   function renderPartyCard(s) {
     const d = s.data || {};
-    const labels = { supplier: 'Dodavatel', client: 'Odběratel', guarantor: 'Ručitel', agent: 'Zástupce' };
+    const labels = { supplier: 'Supplier', client: 'Client', guarantor: 'Guarantor', agent: 'Agent' };
     return `<div class="poly-party">
       <div class="poly-party-role">${labels[s.role] || s.role}</div>
       <div class="poly-party-name">${esc(d.name)}</div>
       <div class="poly-party-detail">
-        IČ: ${esc(d.id || '–')}<br>${esc(d.address || '')}
+        ID: ${esc(d.id || '–')}<br>${esc(d.address || '')}
         ${d.bank ? `<br><span class="iban">${esc(d.bank)}</span>` : ''}
         ${d.email ? `<br>${esc(d.email)}` : ''}
       </div>
@@ -510,9 +510,9 @@ const PolyDoc = (() => {
       const f = s.footer, span = cols.length - 1;
       const vat = Math.round(f.total * f.vat_rate / 100);
       h += `<tfoot>
-        <tr><td colspan="${span}">Základ daně</td><td>${fmt(f.total, f.currency)}</td></tr>
-        <tr><td colspan="${span}">DPH ${f.vat_rate}%</td><td>${fmt(vat, f.currency)}</td></tr>
-        <tr><td colspan="${span}">Celkem k úhradě</td><td>${fmt(f.total + vat, f.currency)}</td></tr>
+        <tr><td colspan="${span}">Subtotal</td><td>${fmt(f.total, f.currency)}</td></tr>
+        <tr><td colspan="${span}">VAT ${f.vat_rate}%</td><td>${fmt(vat, f.currency)}</td></tr>
+        <tr><td colspan="${span}">Total due</td><td>${fmt(f.total + vat, f.currency)}</td></tr>
       </tfoot>`;
     }
     return h + '</table></div>';
@@ -584,7 +584,7 @@ const PolyDoc = (() => {
             _state[d.target_field] = data[d.target_field];
           }
         }
-      } catch (_) { /* API nedostupné, používáme demo_state */ }
+      } catch (_) { /* API unavailable, using demo_state */ }
     }
     evalConditions();
   }
@@ -593,9 +593,9 @@ const PolyDoc = (() => {
   function init() {
     const raw = document.getElementById('raw-data')?.textContent;
     const app = document.getElementById('app');
-    if (!raw) { app.innerHTML = '<p style="color:red">Chyba: data nenalezena</p>'; return; }
+    if (!raw) { app.innerHTML = '<p style="color:red">Error: data not found</p>'; return; }
     try { _doc = JSON.parse(raw); }
-    catch (e) { app.innerHTML = `<p style="color:red">JSON chyba: ${e.message}</p>`; return; }
+    catch (e) { app.innerHTML = `<p style="color:red">JSON error: ${e.message}</p>`; return; }
 
     // Metadata
     const title = _doc.metadata?.title || _doc.header?.doc_id || 'PolyDoc';
@@ -632,7 +632,7 @@ const PolyDoc = (() => {
         await fetch(url, { method });
         alert(successMsg);
       } catch (_) {
-        alert('Demo: akce by byla odeslána na ' + url);
+        alert('Demo: action would be sent to ' + url);
       }
     },
 
@@ -648,8 +648,8 @@ const PolyDoc = (() => {
     verify() {
       const sig = _doc?.header?.signature;
       alert(sig
-        ? '✅ Dokument má podpis ES256\nAlgoritmus: ' + sig.algorithm + '\n\n(Ověření SubtleCrypto — implementováno v PolyDoc v1.1)'
-        : '⚠️ Dokument nemá digitální podpis.\nPro faktury a smlouvy doporučujeme podpis přidat.');
+        ? '✅ Document has ES256 signature\nAlgorithm: ' + sig.algorithm + '\n\n(SubtleCrypto verification — implemented in PolyDoc v1.1)'
+        : '⚠️ Document has no digital signature.\nFor invoices and contracts, adding a signature is recommended.');
     }
   };
 })();

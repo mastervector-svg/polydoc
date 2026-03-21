@@ -250,7 +250,7 @@
       },
       "target": {
         "tool": "cursor",
-        "hint": "Importovat jako nový workspace"
+        "hint": "Import as new workspace"
       },
       "contents": [
         "agent_config",
@@ -272,7 +272,7 @@
       "created_at": "2026-03-12T08:00:00Z",
       "snapshot_id": "snap_20260312_0800",
       "previous_snapshot": "snap_20260305_1430",
-      "changelog": "Přidány konektory Supabase + Resend. Aktualizován agent pro generování nabídek. Opravena autentizace JWT.",
+      "changelog": "Added Supabase + Resend connectors. Updated offer-generation agent. Fixed JWT authentication.",
       "diff": {
         "added": ["connector_supabase", "connector_resend"],
         "modified": ["agent_offer_generator", "backend_main"],
@@ -296,14 +296,14 @@
     {
       "type": "agent_config",
       "id": "agent_offer_generator",
-      "label": "Agent — generování nabídek nemovitostí",
+      "label": "Agent — property offer generation",
       "version": "1.3.0",
       "compressed": false,
       "size_bytes": 2840,
       "data": {
         "model": "claude-sonnet-4-5",
         "provider": "anthropic",
-        "system_prompt": "Jsi expert na realitní komunikaci. Generuješ personalizované nabídky...",
+        "system_prompt": "You are an expert in real estate communication. You generate personalised property offers...",
         "temperature": 0.7,
         "max_tokens": 2000,
         "tools": ["get_property_details", "send_polydoc_mail"],
@@ -313,14 +313,14 @@
     {
       "type": "agent_config",
       "id": "agent_client_support",
-      "label": "Agent — klientská podpora",
+      "label": "Agent — client support",
       "version": "0.9.1",
       "compressed": false,
       "size_bytes": 1920,
       "data": {
         "model": "claude-haiku-4-5-20251001",
         "provider": "anthropic",
-        "system_prompt": "Odpovídáš na otázky klientů realitního portálu...",
+        "system_prompt": "You answer questions from clients of a real estate portal...",
         "temperature": 0.3,
         "max_tokens": 1000,
         "tools": ["get_faq", "escalate_to_human"]
@@ -329,13 +329,13 @@
     {
       "type": "knowledge_base",
       "id": "kb_realty_rules",
-      "label": "Znalostní báze — realitní komunikace",
+      "label": "Knowledge base — real estate communication",
       "version": "2.1.0",
       "compressed": false,
       "size_bytes": 18400,
       "data": {
         "format": "structured",
-        "language": "cs",
+        "language": "en",
         "sections_count": 5,
         "items_count": 47,
         "last_updated": "2026-03-10T14:00:00Z"
@@ -344,7 +344,7 @@
     {
       "type": "frontend_structure",
       "id": "frontend_main",
-      "label": "Frontend — hlavní aplikace",
+      "label": "Frontend — main application",
       "version": "4.2.1",
       "framework": "react",
       "compressed": true,
@@ -355,7 +355,7 @@
     {
       "type": "backend_structure",
       "id": "backend_main",
-      "label": "Backend API — hlavní server",
+      "label": "Backend API — main server",
       "version": "3.1.0",
       "framework": "node-express",
       "compressed": true,
@@ -371,7 +371,7 @@
     {
       "type": "connector_config",
       "id": "connector_supabase",
-      "label": "Konektor — Supabase",
+      "label": "Connector — Supabase",
       "version": "1.0.0",
       "compressed": false,
       "size_bytes": 1200,
@@ -384,7 +384,7 @@
     {
       "type": "connector_config",
       "id": "connector_resend",
-      "label": "Konektor — Resend (email)",
+      "label": "Connector — Resend (email)",
       "version": "1.0.0",
       "compressed": false,
       "size_bytes": 640,
@@ -397,7 +397,7 @@
     {
       "type": "connector_config",
       "id": "connector_stripe",
-      "label": "Konektor — Stripe (platby)",
+      "label": "Connector — Stripe (payments)",
       "version": "0.8.0",
       "compressed": false,
       "size_bytes": 980,
@@ -410,22 +410,22 @@
     {
       "type": "env_schema",
       "id": "env_production",
-      "label": "ENV schéma — produkce",
-      "note": "POUZE SCHÉMA — žádné skutečné hodnoty!",
+      "label": "ENV schema — production",
+      "note": "SCHEMA ONLY — no real values!",
       "compressed": false,
       "size_bytes": 3200,
       "data": {
         "variables": [
-          { "key": "SUPABASE_URL",      "type": "url",    "required": true,  "group": "database", "description": "URL Supabase projektu" },
-          { "key": "SUPABASE_ANON_KEY", "type": "secret", "required": true,  "group": "database", "description": "Anon klíč" },
-          { "key": "ANTHROPIC_API_KEY", "type": "secret", "required": true,  "group": "ai",       "description": "Claude API klíč" },
-          { "key": "RESEND_API_KEY",    "type": "secret", "required": true,  "group": "email",    "description": "Resend API klíč" },
-          { "key": "STRIPE_SECRET_KEY", "type": "secret", "required": true,  "group": "payments", "description": "Stripe secret" },
-          { "key": "IS_BASE_URL",       "type": "url",    "required": true,  "group": "app",      "description": "Base URL aplikace" },
+          { "key": "SUPABASE_URL",      "type": "url",    "required": true,  "group": "database", "description": "Supabase project URL" },
+          { "key": "SUPABASE_ANON_KEY", "type": "secret", "required": true,  "group": "database", "description": "Anon key" },
+          { "key": "ANTHROPIC_API_KEY", "type": "secret", "required": true,  "group": "ai",       "description": "Claude API key" },
+          { "key": "RESEND_API_KEY",    "type": "secret", "required": true,  "group": "email",    "description": "Resend API key" },
+          { "key": "STRIPE_SECRET_KEY", "type": "secret", "required": true,  "group": "payments", "description": "Stripe secret key" },
+          { "key": "IS_BASE_URL",       "type": "url",    "required": true,  "group": "app",      "description": "Application base URL" },
           { "key": "JWT_SECRET",        "type": "secret", "required": true,  "group": "auth",     "description": "JWT signing secret" },
-          { "key": "NEXT_PUBLIC_APP_URL","type": "url",   "required": true,  "group": "app",      "description": "Veřejná URL" },
+          { "key": "NEXT_PUBLIC_APP_URL","type": "url",   "required": true,  "group": "app",      "description": "Public app URL" },
           { "key": "LOG_LEVEL",         "type": "enum",   "required": false, "group": "app",      "description": "debug|info|warn|error" },
-          { "key": "RATE_LIMIT_RPM",    "type": "number", "required": false, "group": "app",      "description": "Požadavků za minutu" }
+          { "key": "RATE_LIMIT_RPM",    "type": "number", "required": false, "group": "app",      "description": "Requests per minute" }
         ]
       }
     }
@@ -441,12 +441,12 @@
   </div>
   <div class="tb-right">
     <button class="tb-btn" onclick="PT.exportJSON()">⬇ JSON</button>
-    <button class="tb-btn" onclick="PT.verify()">🔏 Ověřit</button>
+    <button class="tb-btn" onclick="PT.verify()">🔏 Verify</button>
     <button class="tb-btn primary" onclick="PT.copyImportSnippet()">📋 Import snippet</button>
   </div>
 </div>
 
-<div class="wrap" id="app">Načítám…</div>
+<div class="wrap" id="app">Loading…</div>
 
 <script>
 const PT = (() => {
@@ -460,20 +460,20 @@ const PT = (() => {
 
   const TYPE_META = {
     agent_config:       { icon: '🤖', label: 'Agent' },
-    knowledge_base:     { icon: '🧠', label: 'Znalostní báze' },
+    knowledge_base:     { icon: '🧠', label: 'Knowledge base' },
     frontend_structure: { icon: '🎨', label: 'Frontend' },
     backend_structure:  { icon: '⚙️',  label: 'Backend' },
-    connector_config:   { icon: '🔌', label: 'Konektor' },
-    ui_components:      { icon: '🧩', label: 'UI komponenty' },
-    env_schema:         { icon: '🔑', label: 'ENV schéma' },
+    connector_config:   { icon: '🔌', label: 'Connector' },
+    ui_components:      { icon: '🧩', label: 'UI components' },
+    env_schema:         { icon: '🔑', label: 'ENV schema' },
     workflow_definitions:{ icon: '⚡', label: 'Workflow' },
-    prompt_library:     { icon: '💬', label: 'Prompty' },
-    test_cases:         { icon: '🧪', label: 'Testy' },
+    prompt_library:     { icon: '💬', label: 'Prompts' },
+    test_cases:         { icon: '🧪', label: 'Tests' },
   };
 
   const PURPOSE_LABELS = {
-    backup: 'Záloha', migration: 'Migrace', distribution: 'Distribuce',
-    snapshot: 'Snapshot', handoff: 'Předání', sync: 'Synchronizace'
+    backup: 'Backup', migration: 'Migration', distribution: 'Distribution',
+    snapshot: 'Snapshot', handoff: 'Handoff', sync: 'Synchronisation'
   };
 
   function groupByType(payload) {
@@ -496,7 +496,7 @@ const PT = (() => {
     return `
       <div class="hero">
         <div class="hero-title">${esc(t.label)}</div>
-        <div class="hero-sub">Vytvořeno: ${esc(v.created_at?.slice(0,10))} · Snapshot: <span style="font-family:var(--mono);font-size:12px">${esc(v.snapshot_id)}</span></div>
+        <div class="hero-sub">Created: ${esc(v.created_at?.slice(0,10))} · Snapshot: <span style="font-family:var(--mono);font-size:12px">${esc(v.snapshot_id)}</span></div>
         <div class="transfer-flow">
           ${source}${target}
         </div>
@@ -504,13 +504,13 @@ const PT = (() => {
           <span class="tag blue">${esc(purposeLabel)}</span>
           <span class="tag">poly/${esc(h.format?.split('/')[1] || '1.0')}</span>
           <span class="tag">projekt v${esc(v.project)}</span>
-          <span class="tag">${esc(t.total_items)} položek</span>
+          <span class="tag">${esc(t.total_items)} items</span>
           <span class="tag">${fmtBytes(t.total_size_bytes)} → ${fmtBytes(t.compressed_size_bytes)}</span>
-          <span class="tag">${esc(t.compression || 'bez komprese')}</span>
+          <span class="tag">${esc(t.compression || 'no compression')}</span>
         </div>
         <div class="sig-status ${sigOk ? 'warn' : 'warn'}">
           ${sigOk ? '✅' : '⚠️'}
-          ${sigOk ? 'Podpis přítomen — ověřit kliknutím na tlačítko' : 'Demo podpis — v produkci použít ES256 signing'}
+          ${sigOk ? 'Signature present — click Verify to validate' : 'Demo signature — use ES256 signing in production'}
           &nbsp;·&nbsp; Algoritmus: ${esc(h.signature?.algorithm || '–')}
         </div>
       </div>`;
@@ -523,10 +523,10 @@ const PT = (() => {
       ? Math.round((1 - transfer.compressed_size_bytes / transfer.total_size_bytes) * 100) : 0;
     return `
       <div class="stats">
-        <div class="stat"><div class="stat-val">${payload.length}</div><div class="stat-label">Položek celkem</div></div>
-        <div class="stat"><div class="stat-val">${types}</div><div class="stat-label">Typů obsahu</div></div>
-        <div class="stat"><div class="stat-val">${compressed}</div><div class="stat-label">Komprimováno</div></div>
-        <div class="stat"><div class="stat-val">${ratio}%</div><div class="stat-label">Úspora</div></div>
+        <div class="stat"><div class="stat-val">${payload.length}</div><div class="stat-label">Total items</div></div>
+        <div class="stat"><div class="stat-val">${types}</div><div class="stat-label">Content types</div></div>
+        <div class="stat"><div class="stat-val">${compressed}</div><div class="stat-label">Compressed</div></div>
+        <div class="stat"><div class="stat-val">${ratio}%</div><div class="stat-label">Savings</div></div>
       </div>`;
   }
 
@@ -581,7 +581,7 @@ const PT = (() => {
       html += `
         <div style="margin-top:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
           <table class="env-table">
-            <thead><tr><th>Klíč</th><th>Typ</th><th>Skupina</th><th>Popis</th><th>Req.</th></tr></thead>
+            <thead><tr><th>Key</th><th>Type</th><th>Group</th><th>Description</th><th>Req.</th></tr></thead>
             <tbody>
               ${vars.map(v => `
                 <tr>
@@ -609,17 +609,17 @@ const PT = (() => {
     if (!items.length && !version.changelog) return '';
     return `
       <div class="changelog">
-        <div class="changelog-title">📝 Změny oproti ${esc(version.previous_snapshot || 'předchozí verze')}</div>
+        <div class="changelog-title">📝 Changes since ${esc(version.previous_snapshot || 'previous version')}</div>
         ${version.changelog ? `<p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px">${esc(version.changelog)}</p>` : ''}
         ${items.join('')}
-        ${diff.breaking_changes ? '<div style="margin-top:8px;color:var(--red);font-size:0.82rem;font-weight:600">⚠️ Obsahuje breaking changes!</div>' : ''}
+        ${diff.breaking_changes ? '<div style="margin-top:8px;color:var(--red);font-size:0.82rem;font-weight:600">⚠️ Contains breaking changes!</div>' : ''}
       </div>`;
   }
 
   function init() {
     const raw = document.getElementById('raw-data')?.textContent;
-    if (!raw) { document.getElementById('app').textContent = 'Chyba: data nenalezena'; return; }
-    try { _doc = JSON.parse(raw); } catch(e) { document.getElementById('app').textContent = 'JSON chyba: ' + e.message; return; }
+    if (!raw) { document.getElementById('app').textContent = 'Error: data not found'; return; }
+    try { _doc = JSON.parse(raw); } catch(e) { document.getElementById('app').textContent = 'JSON error: ' + e.message; return; }
 
     const h = _doc.header;
     const payload = _doc.payload || [];
@@ -648,11 +648,11 @@ const PT = (() => {
 
     verify() {
       const sig = _doc?.header?.signature;
-      if (!sig) { alert('⚠️ Žádný podpis'); return; }
+      if (!sig) { alert('⚠️ No signature'); return; }
       if (sig.value?.includes('DEMO')) {
-        alert('⚠️ Demo podpis — neověřitelný.\n\nV produkci použij ES256 signing\ndle spec/POLYDOC_TRANSFER.md');
+        alert('⚠️ Demo signature — not verifiable.\n\nUse ES256 signing in production\nsee spec/POLYDOC_TRANSFER.md');
       } else {
-        alert('✅ Podpis ES256 přítomen\nAlgoritmus: ' + sig.algorithm + '\nHash: ' + sig.payload_hash);
+        alert('✅ ES256 signature present\nAlgorithm: ' + sig.algorithm + '\nHash: ' + sig.payload_hash);
       }
     },
 
@@ -663,12 +663,12 @@ const PT = (() => {
 `import { PolyDocTransfer } from '@polydoc/transfer';
 
 const t = await PolyDocTransfer.load('./${id}.html');
-await t.verify(); // ověř podpis před importem
+await t.verify(); // verify signature before import
 
-// Typy v tomto souboru: ${types.join(', ')}
+// Types in this file: ${types.join(', ')}
 ${types.map(type => `await t.importByType('${type}');`).join('\n')}`;
       navigator.clipboard.writeText(snippet)
-        .then(() => alert('✅ Import snippet zkopírován do schránky'))
+        .then(() => alert('✅ Import snippet copied to clipboard'))
         .catch(() => alert(snippet));
     }
   };
