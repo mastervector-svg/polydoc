@@ -4,27 +4,27 @@ info:
   title: PolyDoc Channel API
   version: 1.0.0
   description: |
-    ## PolyDoc Channel — standardized "DisplayPort for AI"
+    ## PolyDoc Channel — standardizovaný "DisplayPort pro AI"
 
-    Just as a graphics card sends video to a monitor via HDMI,
-    AI sends documents, interfaces, and data to the user via PolyDoc Channel.
+    Stejně jako grafická karta posílá obraz do monitoru přes HDMI,
+    AI posílá dokumenty, rozhraní a data k uživateli přes PolyDoc Channel.
 
-    ### What this channel can do
-    - **Render documents** — invoice, offer, confirmation, report
-    - **Transfer projects** — agent config, knowledge base, frontend/backend structures
-    - **Display interactive UI** — forms, dashboards, checklists
-    - **Sign and verify** — ES256, payload integrity
-    - **Compress transfers** — DEFLATE for large payloads
+    ### Co tento kanál umí
+    - **Renderovat dokumenty** — faktura, nabídka, potvrzení, report
+    - **Přenášet projekty** — agent config, knowledge base, frontend/backend struktury
+    - **Zobrazovat interaktivní UI** — formuláře, dashboardy, checlisty
+    - **Podepisovat a verifikovat** — ES256, integrita payloadu
+    - **Komprimovat přenosy** — DEFLATE pro velké payloady
 
-    ### How AI uses this channel
-    1. Call `POST /render` with JSON data → receive a ready HTML document
-    2. Call `POST /transfer` with a project → receive a transfer package
-    3. Call `POST /validate` to verify any PolyDoc file
-    4. Call `GET /schema/{type}` to learn how to construct a specific type
+    ### Jak AI používá tento kanál
+    1. Zavolá `POST /render` s JSON daty → dostane hotový HTML dokument
+    2. Zavolá `POST /transfer` s projektem → dostane přenosový balík
+    3. Zavolá `POST /validate` pro ověření libovolného PolyDoc souboru
+    4. Zavolá `GET /schema/{type}` pro zjištění jak sestavit konkrétní typ
 
-    ### Channel identifier
-    Every PolyDoc Channel has a `channel_id` and `spec_url`.
-    AI can read the spec and immediately knows how to communicate.
+    ### Identifikátor kanálu
+    Každý PolyDoc Channel má `channel_id` a `spec_url`.
+    AI si může přečíst spec a okamžitě ví jak komunikovat.
 
   contact:
     name: PolyDoc Spec
@@ -35,13 +35,13 @@ info:
 
 servers:
   - url: https://api.{your-domain}.cz/polydoc/v1
-    description: Production server
+    description: Produkční server
     variables:
       your-domain:
         default: example
-        description: Your domain
+        description: Vaše doména
   - url: http://localhost:3000/polydoc/v1
-    description: Local development
+    description: Lokální vývoj
 
 # ══════════════════════════════════════════════════════════════
 # SECURITY
@@ -56,12 +56,12 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT token for authentication (standard IS auth)
+      description: JWT token pro autentizaci (standardní IS auth)
     ApiKeyAuth:
       type: apiKey
       in: header
       name: X-PolyDoc-Key
-      description: API key for machine-to-machine communication (AI agents)
+      description: API klíč pro machine-to-machine komunikaci (AI agenti)
 
   # ──────────────────────────────────────────────────────────
   # SHARED SCHEMAS
@@ -71,13 +71,13 @@ components:
     PolyHeader:
       type: object
       required: [format, doc_id, doc_type]
-      description: Header of every PolyDoc document
+      description: Hlavička každého PolyDoc dokumentu
       properties:
         format:
           type: string
           pattern: '^poly/\d+\.\d+$'
           example: poly/1.0
-          description: PolyDoc format version
+          description: Verze PolyDoc formátu
         spec:
           type: string
           format: uri
@@ -85,11 +85,11 @@ components:
         doc_id:
           type: string
           example: INV-2026-042
-          description: Unique document ID within the system
+          description: Unikátní ID dokumentu v rámci systému
         doc_type:
           type: string
           enum: [invoice, confirmation, offer, status_update, report, transfer, custom]
-          description: Document type
+          description: Typ dokumentu
         created:
           type: string
           format: date-time
@@ -115,7 +115,7 @@ components:
         custom_fields:
           type: object
           additionalProperties: true
-          description: Arbitrary extended metadata
+          description: Libovolná rozšiřující metadata
 
     PolyVisuals:
       type: object
@@ -140,7 +140,7 @@ components:
               format: color
               example: '#ffc107'
 
-    # ── Content sections ───────────────────────────────────
+    # ── Sekce obsahu ──────────────────────────────────────
 
     SectionHeader:
       type: object
@@ -178,7 +178,7 @@ components:
           required: [name]
           properties:
             name: { type: string }
-            id:   { type: string, description: Company registration number or other identifier }
+            id:   { type: string, description: IČO nebo jiný identifikátor }
             address: { type: string }
             bank: { type: string, description: IBAN }
             email: { type: string, format: email }
@@ -217,7 +217,7 @@ components:
         type: { type: string, enum: [image] }
         src:
           type: string
-          description: HTTPS URL or data:image/...;base64,...
+          description: HTTPS URL nebo data:image/...;base64,...
         alt: { type: string }
         width: { type: string, example: 200px }
         caption: { type: string }
@@ -230,8 +230,8 @@ components:
         html:
           type: string
           description: |
-            HTML content — WARNING: sanitize before rendering!
-            DOMPurify recommended.
+            HTML obsah — POZOR: sanitizovat před renderováním!
+            Doporučeno DOMPurify.
 
     SectionChecklist:
       type: object
@@ -254,7 +254,7 @@ components:
         text: { type: string }
 
     Section:
-      description: Any document section
+      description: Libovolná sekce dokumentu
       oneOf:
         - $ref: '#/components/schemas/SectionHeader'
         - $ref: '#/components/schemas/SectionParty'
@@ -312,12 +312,12 @@ components:
               method:  { type: string, enum: [GET, POST, PUT, DELETE] }
               success_message: { type: string }
 
-    # ── Complete PolyDoc document ──────────────────────────
+    # ── Kompletní PolyDoc dokument ─────────────────────
 
     PolyDocument:
       type: object
       required: [header, content]
-      description: Complete PolyDoc document (JSON part embedded in HTML)
+      description: Kompletní PolyDoc dokument (JSON část uvnitř HTML)
       properties:
         header:   { $ref: '#/components/schemas/PolyHeader' }
         metadata: { $ref: '#/components/schemas/PolyMetadata' }
@@ -325,7 +325,7 @@ components:
         visuals:  { $ref: '#/components/schemas/PolyVisuals' }
         logic:    { $ref: '#/components/schemas/PolyLogic' }
 
-    # ── Transfer types ─────────────────────────────────────
+    # ── Transfer typy ──────────────────────────────────
 
     TransferPayloadItem:
       type: object
@@ -351,7 +351,7 @@ components:
         size_bytes: { type: integer }
         compressed_size_bytes: { type: integer }
         data:
-          description: Item content — readable JSON or base64 DEFLATE string
+          description: Obsah položky — čitelný JSON nebo base64 DEFLATE string
           oneOf:
             - type: object
             - type: string
@@ -424,15 +424,15 @@ components:
           items:
             $ref: '#/components/schemas/TransferPayloadItem'
 
-    # ── Response types ─────────────────────────────────────
+    # ── Response typy ──────────────────────────────────
 
     RenderResponse:
       type: object
       properties:
         doc_id:   { type: string }
-        html:     { type: string, description: Complete HTML file as a string }
-        html_url: { type: string, format: uri, description: URL where the file is available }
-        mail_html:    { type: string, description: Static mail version (no JS) }
+        html:     { type: string, description: Kompletní HTML soubor jako string }
+        html_url: { type: string, format: uri, description: URL kde je soubor dostupný }
+        mail_html:    { type: string, description: Statická mailová verze (bez JS) }
         mail_html_url: { type: string, format: uri }
         size_bytes:   { type: integer }
         created_at:   { type: string, format: date-time }
@@ -460,7 +460,7 @@ components:
 
     ChannelInfo:
       type: object
-      description: Identity and capabilities of this PolyDoc Channel
+      description: Identita a schopnosti tohoto PolyDoc Channel
       properties:
         channel_id:   { type: string }
         channel_name: { type: string }
@@ -480,8 +480,8 @@ components:
         ai_instructions:
           type: string
           description: |
-            Direct instructions for the AI agent on how to use this channel.
-            The AI reads this field and knows how to communicate.
+            Přímé instrukce pro AI agenta jak tento kanál používat.
+            AI si toto pole přečte a ví jak komunikovat.
 
     Error:
       type: object
@@ -499,17 +499,17 @@ paths:
   /.well-known/polydoc-channel:
     get:
       operationId: getChannelInfo
-      summary: Information about this PolyDoc Channel
+      summary: Informace o tomto PolyDoc Channel
       tags: [Channel]
       description: |
-        Returns the identity and capabilities of this channel.
-        **AI agents should call this endpoint first** — they receive
-        instructions on how to use the channel, which types it supports,
-        and a direct description for the LLM on what to do with it.
+        Vrátí identitu a schopnosti tohoto kanálu.
+        **AI agenti by měli volat tento endpoint jako první** — dostanou
+        instrukce jak kanál používat, jaké typy podporuje, a přímý popis
+        pro LLM co s tím dělat.
       security: []
       responses:
         '200':
-          description: Channel information
+          description: Informace o kanálu
           content:
             application/json:
               schema:
@@ -522,36 +522,36 @@ paths:
                 capabilities: [render, transfer, validate, sign, compress]
                 supported_doc_types: [invoice, confirmation, offer, status_update, transfer]
                 ai_instructions: |
-                  This channel renders PolyDoc documents for a real estate portal.
+                  Tento kanál renderuje PolyDoc dokumenty pro realitní portál.
 
-                  HOW TO SEND A DOCUMENT TO THE USER:
-                  1. Call POST /render with a JSON document following the PolyDocument schema
-                  2. You will receive an html_url — this is the link you give to the user
-                  3. Use mail_html as the email body (static version without JS)
+                  JAK POSÍLAT DOKUMENT UŽIVATELI:
+                  1. Zavolej POST /render s JSON dokumentem dle PolyDocument schématu
+                  2. Dostaneš html_url — to je odkaz který dáš uživateli
+                  3. mail_html použij jako tělo emailu (statická verze bez JS)
 
-                  DOCUMENT TYPES:
-                  - invoice: invoice with line items, VAT, payment details
-                  - confirmation: action confirmation (viewing, reservation)
-                  - offer: property listing with photo and details
-                  - status_update: status message (price changed, document added)
+                  TYPY DOKUMENTŮ:
+                  - invoice: faktura s položkami, DPH, platebními údaji
+                  - confirmation: potvrzení akce (prohlídka, rezervace)
+                  - offer: nabídka nemovitosti s fotkou a detaily
+                  - status_update: stavová zpráva (cena změněna, dokument přibylo)
 
                   TRANSFER:
-                  - To transfer a project between systems, use POST /transfer
-                  - Contains agent_config, knowledge_base, connector_config, and more
+                  - Pro přenos projektu mezi systémy použij POST /transfer
+                  - Obsahuje agent_config, knowledge_base, connector_config a další
 
-                  ALWAYS:
-                  - Validate the document via POST /validate before sending to the client
-                  - For invoices and contracts, require a signature (sign: true)
+                  VŽDY:
+                  - Validuj dokument přes POST /validate před odesláním klientovi
+                  - Pro faktury a smlouvy vyžaduj podpis (sign: true)
 
   # ── Schema Discovery ───────────────────────────────────────
   /schema/{doc_type}:
     get:
       operationId: getSchema
-      summary: JSON schema for a specific document type
+      summary: JSON schéma pro konkrétní typ dokumentu
       tags: [Channel]
       description: |
-        Returns JSON schema + example for the given document type.
-        The AI can read the schema and knows how to construct the correct document.
+        Vrátí JSON schéma + příklad pro daný typ dokumentu.
+        AI si může přečíst schéma a ví jak sestavit správný dokument.
       security: []
       parameters:
         - name: doc_type
@@ -562,7 +562,7 @@ paths:
             enum: [invoice, confirmation, offer, status_update, report, transfer]
       responses:
         '200':
-          description: Schema and example
+          description: Schéma a příklad
           content:
             application/json:
               schema:
@@ -578,7 +578,7 @@ paths:
                     type: array
                     items: { type: string }
         '404':
-          description: Unknown document type
+          description: Neznámý typ dokumentu
           content:
             application/json:
               schema:
@@ -588,14 +588,14 @@ paths:
   /render:
     post:
       operationId: renderDocument
-      summary: Render a PolyDoc document from JSON data
+      summary: Renderuj PolyDoc dokument z JSON dat
       tags: [Render]
       description: |
-        Main endpoint. The AI assembles a JSON document according to the schema and sends it here.
-        Returns a finished HTML file (full version with JS) + a static mail version.
+        Hlavní endpoint. AI sestaví JSON dokument dle schématu a pošle sem.
+        Vrátí hotový HTML soubor (full verze s JS) + statickou mailovou verzi.
 
-        Optionally stores on the server and returns a URL for sharing with the user.
-        Optionally signs with ES256.
+        Volitelně uloží na server a vrátí URL pro sdílení s uživatelem.
+        Volitelně podepíše ES256.
       requestBody:
         required: true
         content:
@@ -612,15 +612,15 @@ paths:
                     store:
                       type: boolean
                       default: true
-                      description: Store on server and return URL
+                      description: Uložit na server a vrátit URL
                     sign:
                       type: boolean
                       default: false
-                      description: Sign with ES256
+                      description: Podepsat ES256
                     generate_mail_version:
                       type: boolean
                       default: true
-                      description: Also generate a static mail version
+                      description: Vygenerovat i statickou mailovou verzi
                     access:
                       type: object
                       properties:
@@ -634,7 +634,7 @@ paths:
                     ttl_days:
                       type: integer
                       default: 90
-                      description: How long to retain on the server
+                      description: Jak dlouho uchovávat na serveru
             example:
               document:
                 header:
@@ -666,7 +666,7 @@ paths:
                         id: CZ12345678
                         address: Václavské nám. 1, Praha
                     - type: table
-                      columns: [Description, Quantity, Price, Total]
+                      columns: [Popis, Množství, Cena, Celkem]
                       rows:
                         - [Konzultace, 5, 2000, 10000]
                       footer:
@@ -686,13 +686,13 @@ paths:
                   expires_in_days: 30
       responses:
         '200':
-          description: Document successfully rendered
+          description: Dokument úspěšně vyrenderován
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RenderResponse'
         '400':
-          description: Invalid document
+          description: Nevalidní dokument
           content:
             application/json:
               schema:
@@ -703,11 +703,11 @@ paths:
   /render/{doc_id}:
     get:
       operationId: getRenderedDocument
-      summary: Returns a stored PolyDoc document
+      summary: Vrátí uložený PolyDoc dokument
       tags: [Render]
       description: |
-        Public endpoint — returns an HTML document.
-        Verifies the access token from a query parameter or session cookie.
+        Veřejný endpoint — vrátí HTML dokument.
+        Ověří access token z query parametru nebo session cookie.
       security: []
       parameters:
         - name: doc_id
@@ -718,17 +718,17 @@ paths:
           in: query
           required: false
           schema: { type: string }
-          description: Access token (signed token mode)
+          description: Access token (signed token mód)
         - name: format
           in: query
           required: false
           schema:
             type: string
             enum: [html, json, mail]
-          description: Requested response format
+          description: Požadovaný formát odpovědi
       responses:
         '200':
-          description: Document
+          description: Dokument
           content:
             text/html:
               schema: { type: string }
@@ -736,24 +736,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/PolyDocument'
         '403':
-          description: Invalid or expired token
+          description: Neplatný nebo expirovaný token
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '404':
-          description: Document not found
+          description: Dokument nenalezen
 
   # ── Transfer ───────────────────────────────────────────────
   /transfer:
     post:
       operationId: createTransfer
-      summary: Create a transfer package (Transfer Document)
+      summary: Vytvoř přenosový balík (Transfer Document)
       tags: [Transfer]
       description: |
-        Packages payload items into a signed, optionally compressed
-        Transfer Document. Suitable for transferring projects between tools,
-        agent backups, IS synchronization.
+        Zabalí payload položky do podepsaného, volitelně komprimovaného
+        Transfer Document. Vhodné pro přenos projektů mezi nástroji,
+        backup agentů, synchronizaci IS.
       requestBody:
         required: true
         content:
@@ -791,20 +791,20 @@ paths:
                     compress:
                       type: boolean
                       default: true
-                      description: DEFLATE compression for items > 10 KB
+                      description: DEFLATE komprese pro položky > 10 KB
                     sign:
                       type: boolean
                       default: true
                     version:
                       type: string
-                      description: Project version (semver)
+                      description: Verze projektu (semver)
                     changelog:
                       type: string
                     previous_snapshot:
                       type: string
       responses:
         '200':
-          description: Transfer document generated
+          description: Transfer document vygenerován
           content:
             application/json:
               schema:
@@ -830,11 +830,11 @@ paths:
   /transfer/{doc_id}/extract:
     post:
       operationId: extractTransfer
-      summary: Extract content of a Transfer document
+      summary: Extrahuj obsah Transfer dokumentu
       tags: [Transfer]
       description: |
-        Decompresses and returns the content of a transfer file.
-        Optionally filter by types.
+        Dekomprimuje a vrátí obsah transfer souboru.
+        Volitelně filtrovat podle typů.
       parameters:
         - name: doc_id
           in: path
@@ -849,13 +849,13 @@ paths:
                 types:
                   type: array
                   items: { type: string }
-                  description: Type filter — if empty, returns everything
+                  description: Filtr typů — pokud prázdné, vrátí vše
                 verify_signature:
                   type: boolean
                   default: true
       responses:
         '200':
-          description: Extracted content
+          description: Extrahovaný obsah
           content:
             application/json:
               schema:
@@ -872,11 +872,11 @@ paths:
   /validate:
     post:
       operationId: validateDocument
-      summary: Validate a PolyDoc document or Transfer
+      summary: Validuj PolyDoc dokument nebo Transfer
       tags: [Validate]
       description: |
-        Verifies structure, schema, signature, and payload hash.
-        AI should call this before sending a document to the client.
+        Ověří strukturu, schéma, podpis a hash payloadu.
+        AI by měla volat před odesláním dokumentu klientovi.
       requestBody:
         required: true
         content:
@@ -885,13 +885,13 @@ paths:
               type: object
               properties:
                 document:
-                  description: JSON document to validate
+                  description: JSON dokument k validaci
                   oneOf:
                     - $ref: '#/components/schemas/PolyDocument'
                     - $ref: '#/components/schemas/TransferDocument'
                 html:
                   type: string
-                  description: Alternatively — the entire HTML file as a string
+                  description: Alternativně — celý HTML soubor jako string
                 checks:
                   type: array
                   items:
@@ -900,7 +900,7 @@ paths:
                   default: [schema, signature, hash]
       responses:
         '200':
-          description: Validation result
+          description: Výsledek validace
           content:
             application/json:
               schema:
@@ -910,12 +910,12 @@ paths:
   /sign:
     post:
       operationId: signDocument
-      summary: Sign a document with ES256
+      summary: Podepište dokument ES256
       tags: [Sign]
       description: |
-        Signs a JSON document or transfer file.
-        Returns the document with `header.signature` populated.
-        Keys are managed by the server.
+        Podepíše JSON dokument nebo transfer soubor.
+        Vrátí dokument s vyplněným `header.signature`.
+        Klíče jsou spravovány serverem.
       requestBody:
         required: true
         content:
@@ -930,26 +930,26 @@ paths:
                     - $ref: '#/components/schemas/TransferDocument'
                 key_id:
                   type: string
-                  description: Key ID (if the IS manages multiple keys)
+                  description: ID klíče (pokud IS spravuje více klíčů)
       responses:
         '200':
-          description: Signed document
+          description: Podepsaný dokument
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   document:
-                    description: Document with header.signature populated
+                    description: Dokument s vyplněným header.signature
                   public_key_url:
                     type: string
                     format: uri
-                    description: URL where the public key is available for verification
+                    description: URL kde je dostupný veřejný klíč pro ověření
 
   /verify:
     post:
       operationId: verifySignature
-      summary: Verify a document signature
+      summary: Ověřte podpis dokumentu
       tags: [Sign]
       requestBody:
         required: true
@@ -965,7 +965,7 @@ paths:
                     - $ref: '#/components/schemas/TransferDocument'
       responses:
         '200':
-          description: Verification result
+          description: Výsledek ověření
           content:
             application/json:
               schema:
@@ -983,16 +983,16 @@ paths:
 tags:
   - name: Channel
     description: |
-      Discovery endpoints — AI calls these first.
-      Learns what the channel can do and how to use it.
+      Discovery endpointy — AI volá jako první.
+      Zjistí co kanál umí a jak ho používat.
   - name: Render
-    description: Rendering documents from JSON data into HTML
+    description: Renderování dokumentů z JSON dat do HTML
   - name: Transfer
-    description: Transfer packages for projects, agents, configurations
+    description: Přenosové balíky pro projekty, agenty, konfigurace
   - name: Validate
-    description: Validation of structure, schema, signature
+    description: Validace struktury, schématu, podpisu
   - name: Sign
-    description: Signing and verification with ES256
+    description: Podepisování a ověřování ES256
 
 # ══════════════════════════════════════════════════════════════
 # SHARED RESPONSES
@@ -1000,43 +1000,43 @@ tags:
 components:
   responses:
     Unauthorized:
-      description: Missing or invalid token
+      description: Chybí nebo neplatný token
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error: unauthorized
-            message: Missing Bearer token or X-PolyDoc-Key header
+            message: Chybí Bearer token nebo X-PolyDoc-Key hlavička
 
 # ══════════════════════════════════════════════════════════════
-# x-ai-instructions — direct instruction for LLM
-# This field is read by modern AI agents (Claude, GPT-4, Gemini)
-# when loading the OpenAPI specification
+# x-ai-instructions — přímý pokyn pro LLM
+# Toto pole čtou moderní AI agenti (Claude, GPT-4, Gemini)
+# při načtení OpenAPI specifikace
 # ══════════════════════════════════════════════════════════════
 x-ai-instructions: |
-  This is the PolyDoc Channel API — a standardized channel for sending
-  documents and data from an AI agent to the user.
+  Toto je PolyDoc Channel API — standardizovaný kanál pro odesílání
+  dokumentů a dat od AI agenta k uživateli.
 
-  BASIC WORKFLOW:
-  1. Read GET /.well-known/polydoc-channel — learn what the channel supports
-  2. Read GET /schema/{doc_type} — learn how to construct a document
-  3. Assemble JSON according to the PolyDocument schema
-  4. Call POST /validate — verify before sending
-  5. Call POST /render — receive html_url and mail_html
-  6. Pass html_url to the user as a link to the interactive document
-  7. Insert mail_html as the email body
+  ZÁKLADNÍ WORKFLOW:
+  1. Přečti GET /.well-known/polydoc-channel — zjistíš co kanál podporuje
+  2. Přečti GET /schema/{doc_type} — zjistíš jak sestavit dokument
+  3. Sestav JSON dle PolyDocument schématu
+  4. Zavolej POST /validate — ověř než odešleš
+  5. Zavolej POST /render — dostaneš html_url a mail_html
+  6. html_url předej uživateli jako odkaz na interaktivní dokument
+  7. mail_html vlož jako tělo emailu
 
-  TRANSFER WORKFLOW (project transfer):
-  1. Assemble payload[] with agent_config, knowledge_base, connector_config...
-  2. Call POST /transfer — receive a signed HTML package
-  3. The recipient opens it in a browser or imports it via /transfer/{id}/extract
+  TRANSFER WORKFLOW (přenos projektů):
+  1. Sestav payload[] s agent_config, knowledge_base, connector_config...
+  2. Zavolej POST /transfer — dostaneš podepsaný HTML balík
+  3. Příjemce ho otevře v prohlížeči nebo importuje přes /transfer/{id}/extract
 
-  SECURITY:
-  - For invoices and contracts always use sign: true
-  - env_schema NEVER contains actual values — only keys and types
-  - Sensitive documents: access.mode = "encrypted"
+  BEZPEČNOST:
+  - Pro faktury a smlouvy vždy sign: true
+  - env_schema NIKDY neobsahuje skutečné hodnoty — jen klíče a typy
+  - Citlivé dokumenty: access.mode = "encrypted"
 
-  RESPONSE FORMAT FOR THE USER:
-  Always present html_url as a clickable link, not raw HTML.
-  Example: "Your document is ready: [Open invoice](html_url)"
+  FORMÁT ODPOVĚDI PRO UŽIVATELE:
+  Vždy předej html_url jako klikatelný odkaz, ne surové HTML.
+  Příklad: "Váš dokument je připraven: [Otevřít fakturu](html_url)"

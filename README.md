@@ -275,9 +275,12 @@ polydoc/
 ├── spec/
 │   ├── POLYDOC_SPEC.md          ← format specification v1.0
 │   ├── POLYDOC_TRANSFER.md      ← transfer format specification
-│   ├── POLYDOC_ENVELOPE.md      ← envelope format specification
-│   ├── DEPLOYMENT_REALTY.md     ← deployment guide: real estate portal
-│   └── openapi.yaml             ← Channel API (OpenAPI 3.1)
+│   ├── POLYDOC_ENVELOPE.md      ← envelope format specification (incl. §11 Fill Providers)
+│   ├── POLYDOC_WORKFLOW.md      ← workflow, DRM, time-lock, quorum, Git integration
+│   ├── DEPLOYMENT_REALTY.md     ← deployment guide: real estate portal (EN)
+│   ├── DEPLOYMENT_REALTY.cs.md  ← deployment guide: real estate portal (CS)
+│   ├── openapi.yaml             ← Channel API (OpenAPI 3.1, EN)
+│   └── openapi.cs.yaml          ← Channel API (OpenAPI 3.1, CS — preserved)
 │
 ├── schema/
 │   └── poly-v1.0.schema.json    ← JSON Schema validator (IDE autocomplete)
@@ -289,7 +292,8 @@ polydoc/
 ├── templates/
 │   ├── polydoc-full.html        ← full interactive template
 │   ├── polydoc-mail.html        ← static mail template
-│   └── polydoc-transfer.html    ← transfer viewer template
+│   ├── polydoc-transfer.html    ← transfer viewer template
+│   └── polydoc-envelope.html    ← envelope viewer template (extracted from buildEnvelopeHtml())
 │
 ├── examples/
 │   ├── invoice-demo.html        ← bilingual EN/CS demo + Human/Agent toggle
@@ -399,24 +403,42 @@ docker run -p 3000:3000 -e LLM_BASE_URL -e LLM_API_KEY -e LLM_MODEL \
 - [x] Lazy load spec (inline / on-demand modes)
 - [x] Human/Agent view toggle (demo)
 
-### v1.1 (current)
+### v1.1 ✅
 - [x] Envelope format (`doc_type: "envelope"`) — any file, any MIME type, one HTML
 - [x] Envelope Slots — collaborative filling, `fill_prompt`, `workspace://`
 - [x] `POST /envelope/:id/fill` — fill slot via API
 - [x] `POST /envelope/:id/fill-ai` — **LLM agent fills slot** (OpenAI-compatible, any model)
 - [x] VS Code extension scaffold — sidebar, fill, pack, preview, scheduled fill
+- [x] Shared interpreter on CDN (`poly-interpreter.js`)
+- [x] SubtleCrypto signature verification (browser)
+- [x] `npx polydoc render invoice.json` CLI
+- [x] DOMPurify integration for `rich_text`
+- [x] More themes (dark, classic, minimal)
+- [x] VS Code extension — publish to Marketplace
+
+### v1.2 (current)
+- [x] Fill Providers — on-demand slot filling by external service (spec §11)
+- [x] POLYDOC_WORKFLOW.md — DRM, time-lock, quorum, Git integration
+- [x] RFC 3161 trusted timestamp in signatures
+- [x] Four-eyes principle + remote notary (eIDAS qualified)
+- [x] Embedded media & WASM apps inside envelope
+- [x] Export lock with per-user watermark
+- [x] Full English translation of all spec files
 - [ ] Shared interpreter on CDN (`poly-interpreter.js`)
 - [ ] SubtleCrypto signature verification (browser)
 - [ ] `npx polydoc render invoice.json` CLI
 - [ ] DOMPurify integration for `rich_text`
 - [ ] More themes (dark, classic, minimal)
 - [ ] VS Code extension — publish to Marketplace
+- [ ] `POST /envelope/:id/fill-provider` server implementation
 
 ### v2.0
 - [ ] MCP server — PolyDoc as MCP tool for AI agents (`fill_slot`, `pack_envelope`, `list_envelopes`)
 - [ ] WYSIWYG editor
 - [ ] Official integrations (Lovable, Cursor, n8n)
 - [ ] Offline-first (Service Worker)
+- [ ] Key server reference implementation
+- [ ] Notary service reference implementation
 
 ---
 

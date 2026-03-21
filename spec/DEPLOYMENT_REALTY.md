@@ -1,31 +1,31 @@
-# PolyDoc — Deployment Guide: Realitní portál
+# PolyDoc — Deployment Guide: Real Estate Portal
 
-> Jak nasadit PolyDoc pro transakční komunikaci s klienty.
-> Zahrnuje auth vrstvu, šifrování, cookie session a konkrétní datový model.
-
----
-
-## 1. Které zprávy patří do PolyDoc
-
-**ANO — transakční a oficální zprávy:**
-- Nabídka nemovitosti (personalizovaný tip pro klienta)
-- Potvrzení rezervace prohlídky
-- Potvrzení přijetí poptávky / dokumentů
-- Stavová zpráva (cena změněna, přibyl dokument, prodávající odpověděl)
-- Shrnutí jednání
-- Výzva k doplnění údajů
-
-**NE — necpat do PolyDoc:**
-- Běžný chat makléř–klient
-- Ad hoc rychlé odpovědi
-- Interní poznámky
-- Citlivé přílohy (smlouvy, RČ, celé profily)
+> How to deploy PolyDoc for transactional client communication.
+> Covers the auth layer, encryption, cookie session, and the concrete data model.
 
 ---
 
-## 2. Datový model zprávy
+## 1. Which messages belong in PolyDoc
 
-Každá PolyDoc zpráva v IS má tento základ:
+**YES — transactional and official messages:**
+- Property offer (personalised tip for the client)
+- Viewing appointment confirmation
+- Acknowledgement of enquiry / document receipt
+- Status update (price changed, new document added, seller responded)
+- Meeting summary
+- Request for additional information
+
+**NO — do not put these in PolyDoc:**
+- Everyday agent–client chat
+- Ad-hoc quick replies
+- Internal notes
+- Sensitive attachments (contracts, national ID numbers, full profiles)
+
+---
+
+## 2. Message data model
+
+Every PolyDoc message in the IS has this base structure:
 
 ```json
 {
@@ -35,7 +35,7 @@ Každá PolyDoc zpráva v IS má tento základ:
   "client_id": "client_456",
   "sender_identity": {
     "name": "Jana Horáková",
-    "role": "Makléřka",
+    "role": "Agent",
     "email": "horakova@realportal.cz",
     "phone": "+420 777 000 111",
     "agency": "RealPortal s.r.o."
@@ -54,23 +54,23 @@ Každá PolyDoc zpráva v IS má tento základ:
 }
 ```
 
-### Typy entit (`entity_type`)
+### Entity types (`entity_type`)
 
-| Hodnota | Popis |
-|---------|-------|
-| `property` | Nabídka nemovitosti |
-| `viewing` | Prohlídka |
-| `reservation` | Rezervace |
-| `inquiry` | Poptávka |
-| `contract` | Smlouva |
-| `status_update` | Stavová zpráva |
-| `document_request` | Výzva k doplnění |
+| Value | Description |
+|-------|-------------|
+| `property` | Property offer |
+| `viewing` | Viewing appointment |
+| `reservation` | Reservation |
+| `inquiry` | Enquiry |
+| `contract` | Contract |
+| `status_update` | Status update |
+| `document_request` | Request for additional information |
 
 ---
 
-## 3. Tři typy zpráv — PolyDoc schéma
+## 3. Three message types — PolyDoc schema
 
-### Typ A: Nabídka nemovitosti
+### Type A: Property offer
 
 ```json
 {
@@ -81,8 +81,8 @@ Každá PolyDoc zpráva v IS má tento základ:
     "created": "2026-03-12T08:00:00Z"
   },
   "metadata": {
-    "title": "Nabídka: Byt 3+kk Praha 6",
-    "tags": ["nabidka", "byt", "praha"],
+    "title": "Offer: 3-bedroom flat Prague 6",
+    "tags": ["offer", "flat", "prague"],
     "custom_fields": {
       "property_id": "prop_123",
       "price": 8500000,
@@ -98,29 +98,29 @@ Každá PolyDoc zpráva v IS má tento základ:
       {
         "type": "property_hero",
         "image_url": "https://cdn.realportal.cz/prop_123/main.jpg",
-        "title": "Byt 3+kk, 82 m², Praha 6 – Dejvice",
-        "price": "8 500 000 Kč",
-        "tags": ["Novostavba", "Parkování", "Výtah"]
+        "title": "3-bedroom flat, 82 m², Praha 6 – Dejvice",
+        "price": "8 500 000 CZK",
+        "tags": ["New build", "Parking", "Lift"]
       },
       {
         "type": "property_stats",
         "items": [
-          { "label": "Dispozice", "value": "3+kk" },
-          { "label": "Plocha", "value": "82 m²" },
-          { "label": "Podlaží", "value": "4. z 8" },
-          { "label": "Stav", "value": "Novostavba 2024" },
-          { "label": "Energie", "value": "Třída B" }
+          { "label": "Layout", "value": "3+kk" },
+          { "label": "Area", "value": "82 m²" },
+          { "label": "Floor", "value": "4th of 8" },
+          { "label": "Condition", "value": "New build 2024" },
+          { "label": "Energy", "value": "Class B" }
         ]
       },
       {
         "type": "paragraph",
-        "text": "Posílám vám tuto nabídku, protože odpovídá vašim požadavkům na dispozici a lokalitu, které jste mi sdělil/a na schůzce 5. března."
+        "text": "I am sending you this offer because it matches the layout and location requirements you described to me at our meeting on 5 March."
       },
       {
         "type": "agent_card",
         "data": {
           "name": "Jana Horáková",
-          "role": "Makléřka",
+          "role": "Agent",
           "phone": "+420 777 000 111",
           "email": "horakova@realportal.cz",
           "photo_url": "https://cdn.realportal.cz/agents/horakova.jpg"
@@ -131,7 +131,7 @@ Každá PolyDoc zpráva v IS má tento základ:
 }
 ```
 
-### Typ B: Potvrzení akce (prohlídka, rezervace)
+### Type B: Action confirmation (viewing, reservation)
 
 ```json
 {
@@ -146,25 +146,25 @@ Každá PolyDoc zpráva v IS má tento základ:
       {
         "type": "confirmation_hero",
         "icon": "✅",
-        "title": "Prohlídka potvrzena",
-        "subtitle": "Byt 3+kk, Dejvická 12, Praha 6"
+        "title": "Viewing confirmed",
+        "subtitle": "3-bedroom flat, Dejvická 12, Praha 6"
       },
       {
         "type": "detail_grid",
         "items": [
-          { "label": "Datum", "value": "Pátek 15. 3. 2026" },
-          { "label": "Čas", "value": "10:00 – 10:30" },
-          { "label": "Adresa", "value": "Dejvická 12, Praha 6" },
-          { "label": "Referenční číslo", "value": "VIEW-2026-789" },
-          { "label": "Kontaktní osoba", "value": "Jana Horáková, +420 777 000 111" }
+          { "label": "Date", "value": "Friday 15 March 2026" },
+          { "label": "Time", "value": "10:00 – 10:30" },
+          { "label": "Address", "value": "Dejvická 12, Praha 6" },
+          { "label": "Reference number", "value": "VIEW-2026-789" },
+          { "label": "Contact person", "value": "Jana Horáková, +420 777 000 111" }
         ]
       },
       {
         "type": "next_steps",
         "items": [
-          "Dostavte se prosím 5 minut před začátkem",
-          "S sebou: občanský průkaz",
-          "Parkování: zóna P+R Dejvická (200 m)"
+          "Please arrive 5 minutes before the start time",
+          "Bring with you: a valid ID document",
+          "Parking: P+R zone Dejvická (200 m away)"
         ]
       }
     ]
@@ -172,24 +172,24 @@ Každá PolyDoc zpráva v IS má tento základ:
   "logic": {
     "actions": [
       {
-        "label": "📅 Přidat do kalendáře",
+        "label": "📅 Add to calendar",
         "type": "ics_download",
         "api_url": "https://app.realportal.cz/api/viewing/view_789/ics"
       },
       {
-        "label": "❌ Zrušit / změnit termín",
+        "label": "❌ Cancel / reschedule",
         "type": "api_call",
         "api_url": "https://app.realportal.cz/api/viewing/view_789/cancel",
         "method": "POST",
-        "confirm_prompt": "Opravdu chcete zrušit prohlídku?",
-        "success_message": "Prohlídka zrušena. Makléřka vás bude kontaktovat."
+        "confirm_prompt": "Are you sure you want to cancel the viewing?",
+        "success_message": "Viewing cancelled. The agent will contact you."
       }
     ]
   }
 }
 ```
 
-### Typ C: Stavová zpráva
+### Type C: Status update
 
 ```json
 {
@@ -205,19 +205,19 @@ Každá PolyDoc zpráva v IS má tento základ:
         "type": "status_hero",
         "status": "price_changed",
         "icon": "🏷️",
-        "title": "Cena nemovitosti byla snížena",
-        "subtitle": "Byt 3+kk, Dejvická 12, Praha 6"
+        "title": "Property price has been reduced",
+        "subtitle": "3-bedroom flat, Dejvická 12, Praha 6"
       },
       {
         "type": "price_change",
-        "from": "9 200 000 Kč",
-        "to": "8 500 000 Kč",
-        "diff": "−700 000 Kč",
-        "diff_pct": "−7,6 %"
+        "from": "9 200 000 CZK",
+        "to": "8 500 000 CZK",
+        "diff": "−700 000 CZK",
+        "diff_pct": "−7.6 %"
       },
       {
         "type": "paragraph",
-        "text": "Prodávající snížil cenu. Nabídka je nyní dostupná za výrazně lepších podmínek. Doporučuji jednat rychle — o nemovitost je zájem."
+        "text": "The seller has reduced the price. The offer is now available on significantly better terms. I recommend acting quickly — there is active interest in this property."
       }
     ]
   }
@@ -226,26 +226,26 @@ Každá PolyDoc zpráva v IS má tento základ:
 
 ---
 
-## 4. Auth vrstva — tři módy přístupu k full verzi
+## 4. Auth layer — three access modes for the full version
 
-Po prokliknutí CTA tlačítka z mailu může být full verze chráněna třemi způsoby. Vyber podle citlivosti dokumentu.
+After clicking the CTA button in the email, the full version can be protected in three ways. Choose based on the sensitivity of the document.
 
-### Mód 1: Signed Token (doporučeno pro většinu)
+### Mode 1: Signed Token (recommended for most cases)
 
-Nejjednodušší, nejpřívětivější pro klienta. Žádné heslo, žádné přihlášení.
+Simplest, most client-friendly. No password, no login.
 
-**Jak funguje:**
-1. IS vygeneruje unikátní `token` při vytvoření zprávy
-2. Token je součástí URL v CTA tlačítku: `https://app.realportal.cz/doc/msg_abc123?t=tok_xyz987`
-3. Server ověří token → vrátí full HTML
-4. Token může mít expiraci (`expires_at`)
+**How it works:**
+1. The IS generates a unique `token` when the message is created
+2. The token is part of the URL in the CTA button: `https://app.realportal.cz/doc/msg_abc123?t=tok_xyz987`
+3. The server verifies the token → returns the full HTML
+4. The token can have an expiry (`expires_at`)
 
 ```php
-// Generování tokenu
+// Generate token
 function generateDocToken(string $messageId): string {
-    $token = bin2hex(random_bytes(32)); // 64 znaků, kryptograficky bezpečné
+    $token = bin2hex(random_bytes(32)); // 64 characters, cryptographically secure
     DB::insert('doc_tokens', [
-        'token'      => hash('sha256', $token), // ukládáme hash, ne plaintext
+        'token'      => hash('sha256', $token), // store the hash, not plaintext
         'message_id' => $messageId,
         'created_at' => now(),
         'expires_at' => now()->addDays(30),
@@ -254,7 +254,7 @@ function generateDocToken(string $messageId): string {
     return $token;
 }
 
-// Ověření tokenu (middleware)
+// Verify token (middleware)
 function verifyDocToken(string $token, string $messageId): bool {
     $record = DB::find('doc_tokens', [
         'token'      => hash('sha256', $token),
@@ -270,33 +270,33 @@ function verifyDocToken(string $token, string $messageId): bool {
 Route::get('/doc/{messageId}', function($messageId, Request $req) {
     $token = $req->query('t');
     if (!verifyDocToken($token, $messageId)) {
-        abort(403, 'Neplatný nebo expirovaný odkaz.');
+        abort(403, 'Invalid or expired link.');
     }
     $message = Message::find($messageId);
-    return generatePolyDocFull($message); // inject JSON do šablony
+    return generatePolyDocFull($message); // inject JSON into template
 });
 ```
 
-**URL v mailu:**
+**URL in the email:**
 ```
 https://app.realportal.cz/doc/msg_abc123?t=a3f9e2b1c4d5...
 ```
 
-**Výhody:** Žádné přihlášení, funguje hned, klient nemusí mít účet.
-**Nevýhody:** Kdokoli s URL má přístup (ale URL je 64 znaků — prakticky nezjistitelná).
+**Advantages:** No login required, works immediately, client does not need an account.
+**Disadvantages:** Anyone with the URL has access (but the URL is 64 characters long — practically unguessable).
 
 ---
 
-### Mód 2: Cookie Session (pro klienty s účtem)
+### Mode 2: Cookie Session (for clients with an account)
 
-Klient musí být přihlášen. Po prokliknutí z mailu → server zkontroluje session cookie → buď zobrazí, nebo přesměruje na login.
+The client must be logged in. After clicking the link in the email → the server checks the session cookie → either displays the document or redirects to login.
 
 ```php
-// Middleware: vyžaduje přihlášení
+// Middleware: requires login
 Route::get('/doc/{messageId}', function($messageId) {
-    // 1. Ověř session
+    // 1. Verify session
     if (!Auth::check()) {
-        // Ulož intended URL, přesměruj na login
+        // Save intended URL, redirect to login
         session(['intended_url' => request()->fullUrl()]);
         return redirect('/login');
     }
@@ -304,17 +304,17 @@ Route::get('/doc/{messageId}', function($messageId) {
     $user = Auth::user();
     $message = Message::find($messageId);
 
-    // 2. Ověř že dokument patří tomuto klientovi
+    // 2. Verify that the document belongs to this client
     if ($message->client_id !== $user->client_id) {
-        abort(403, 'Tento dokument není váš.');
+        abort(403, 'This document does not belong to you.');
     }
 
     return generatePolyDocFull($message);
 })->middleware('auth');
 
-// Login controller — po přihlášení vrátí na původní URL
+// Login controller — after login, redirect to original URL
 public function login(Request $request) {
-    // ... ověření credentials ...
+    // ... verify credentials ...
     Auth::login($user);
     $redirect = session('intended_url', '/dashboard');
     session()->forget('intended_url');
@@ -324,87 +324,87 @@ public function login(Request $request) {
 
 **UX flow:**
 ```
-Mail CTA → /doc/msg_abc123
-  → není cookie → redirect /login?next=/doc/msg_abc123
-  → klient zadá email/heslo
-  → redirect zpět na /doc/msg_abc123
-  → dokument se zobrazí
+Email CTA → /doc/msg_abc123
+  → no cookie → redirect /login?next=/doc/msg_abc123
+  → client enters email/password
+  → redirect back to /doc/msg_abc123
+  → document displayed
 ```
 
-**Magický link (lepší UX):**
-Místo hesla pošli klientovi jednorázový přihlašovací odkaz emailem:
+**Magic link (better UX):**
+Instead of a password, send the client a one-time login link by email:
 ```php
-// Klient klikne "Přihlásit přes email" → dostane link
+// Client clicks "Log in via email" → receives a link
 $magicToken = MagicLink::create($user->email, redirect: '/doc/msg_abc123');
 Mail::to($user->email)->send(new MagicLinkMail($magicToken));
 ```
 
 ---
 
-### Mód 3: Šifrovaný obsah (pro citlivé dokumenty)
+### Mode 3: Encrypted content (for sensitive documents)
 
-Full verze je zašifrovaná na serveru, klíč je součástí URL fragmentu (`#key=...`).
-Server **nikdy nevidí klíč** — dešifrování probíhá pouze v prohlížeči klienta.
+The full version is encrypted on the server; the key is part of the URL fragment (`#key=...`).
+The server **never sees the key** — decryption happens only in the client's browser.
 
 ```
 https://app.realportal.cz/doc/msg_abc123#key=BASE64_AES_KEY
 ```
 
-Fragment (`#...`) se **neodesílá na server** — to je klíčová vlastnost HTTP.
+The fragment (`#...`) is **never sent to the server** — this is a key property of HTTP.
 
-**Generování (server, při vytvoření zprávy):**
+**Generation (server, when the message is created):**
 ```javascript
-// Node.js — generování šifrovaného dokumentu
+// Node.js — generate encrypted document
 import { webcrypto } from 'crypto';
 const { subtle } = webcrypto;
 
 async function encryptPolyDoc(jsonData) {
-  // 1. Vygeneruj AES-GCM klíč
+  // 1. Generate AES-GCM key
   const key = await subtle.generateKey(
     { name: 'AES-GCM', length: 256 },
-    true, // exportovatelný
+    true, // exportable
     ['encrypt', 'decrypt']
   );
 
-  // 2. Zašifruj JSON
+  // 2. Encrypt JSON
   const iv = webcrypto.getRandomValues(new Uint8Array(12));
   const encoded = new TextEncoder().encode(JSON.stringify(jsonData));
   const ciphertext = await subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
 
-  // 3. Export klíče jako Base64
+  // 3. Export key as Base64
   const rawKey = await subtle.exportKey('raw', key);
   const keyB64 = Buffer.from(rawKey).toString('base64url');
   const ivB64 = Buffer.from(iv).toString('base64url');
   const dataB64 = Buffer.from(ciphertext).toString('base64url');
 
   return {
-    encrypted_payload: `${ivB64}.${dataB64}`, // uloží se na server
-    fragment_key: keyB64,                      // jde do URL fragmentu, server ho nevidí
+    encrypted_payload: `${ivB64}.${dataB64}`, // stored on server
+    fragment_key: keyB64,                      // goes into URL fragment, server never sees it
     url: `https://app.realportal.cz/doc/msg_abc123#key=${keyB64}`
   };
 }
 ```
 
-**Dešifrování (klient, v prohlížeči):**
+**Decryption (client, in the browser):**
 ```javascript
-// Součást poly-interpreter.js pro šifrované dokumenty
+// Part of poly-interpreter.js for encrypted documents
 async function decryptAndRender() {
   const fragment = window.location.hash.slice(1);
   const params = new URLSearchParams(fragment);
   const keyB64 = params.get('key');
 
   if (!keyB64) {
-    // Žádný klíč → zobraz pouze preview nebo výzvu k přihlášení
+    // No key → show preview only or prompt to log in
     showLoginPrompt();
     return;
   }
 
-  // Načti zašifrovaná data ze serveru
+  // Fetch encrypted data from server
   const res = await fetch(`/api/doc/${DOC_ID}/encrypted`);
   const { payload } = await res.json();
   const [ivB64, dataB64] = payload.split('.');
 
-  // Dešifruj v prohlížeči
+  // Decrypt in browser
   const keyBytes = Uint8Array.from(atob(keyB64.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
   const iv = Uint8Array.from(atob(ivB64.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
   const data = Uint8Array.from(atob(dataB64.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
@@ -417,55 +417,55 @@ async function decryptAndRender() {
 }
 ```
 
-**Kdy použít šifrování:**
-- Smlouvy a jejich návrhy
-- Dokumenty s osobními údaji (RČ, bank. účty)
-- Nabídky s důvěrnou cenou
-- Cokoliv kde nechceš, aby server znal obsah po otevření
+**When to use encryption:**
+- Contracts and their drafts
+- Documents containing personal data (national ID numbers, bank accounts)
+- Offers with a confidential price
+- Anything where you do not want the server to know the content after it has been opened
 
 ---
 
-## 5. Rozhodovací matice — který mód pro co
+## 5. Decision matrix — which mode for what
 
-| Typ zprávy | Doporučený mód | Důvod |
-|-----------|---------------|-------|
-| Nabídka nemovitosti | Signed Token | Jednoduché, klient nemusí mít účet |
-| Potvrzení prohlídky | Signed Token | Rychlý přístup, nízká citlivost |
-| Stavová zpráva | Signed Token | Rutinní info |
-| Shrnutí jednání | Cookie Session | Klient má účet, chceme audit |
-| Výzva k dokumentům | Cookie Session | Chceme vědět kdo to splnil |
-| Návrh smlouvy | Šifrování | Citlivý obsah, právní relevance |
-| Dokumenty s RČ | Šifrování | GDPR povinnost |
+| Message type | Recommended mode | Reason |
+|-------------|-----------------|--------|
+| Property offer | Signed Token | Simple, client does not need an account |
+| Viewing confirmation | Signed Token | Quick access, low sensitivity |
+| Status update | Signed Token | Routine information |
+| Meeting summary | Cookie Session | Client has an account, we want an audit trail |
+| Document request | Cookie Session | We want to know who completed it |
+| Contract draft | Encryption | Sensitive content, legal relevance |
+| Documents with national ID | Encryption | GDPR obligation |
 
 ---
 
-## 6. Phishing ochrana — povinné prvky
+## 6. Phishing protection — mandatory elements
 
-Protože klienty učíš klikat na "Otevřít dokument", musí být vždy jasné že je odkaz legitimní.
+Because you are training clients to click "Open document", it must always be clear that the link is legitimate.
 
-### V mailu (preview verze)
+### In the email (preview version)
 ```html
-<!-- Vždy zobraz odesílatele -->
-<p style="...">Zprávu odeslala: <strong>Jana Horáková</strong> · RealPortal s.r.o.</p>
+<!-- Always display the sender -->
+<p style="...">Message sent by: <strong>Jana Horáková</strong> · RealPortal s.r.o.</p>
 
-<!-- Vždy zobraz doménu odkazu viditelně -->
+<!-- Always display the link domain visibly -->
 <p style="font-size:11px;color:#999;">
-  Odkaz vede na: <strong>app.realportal.cz</strong>
+  Link goes to: <strong>app.realportal.cz</strong>
 </p>
 
-<!-- Referenční číslo viditelně -->
+<!-- Reference number visibly -->
 <p>Reference: <code>VIEW-2026-789</code></p>
 ```
 
-### Na serveru (full verze)
-- Vždy HTTPS, platný certifikát
-- URL musí být na vaší doméně — nikdy `bit.ly` nebo jiné zkracovače
-- V hlavičce stránky zobrazit: kdo dokument vystavil, pro koho, kdy
-- Přidat `Strict-Transport-Security` a `Content-Security-Policy` hlavičky
+### On the server (full version)
+- Always HTTPS with a valid certificate
+- The URL must be on your domain — never use `bit.ly` or other URL shorteners
+- Display in the page header: who issued the document, for whom, and when
+- Add `Strict-Transport-Security` and `Content-Security-Policy` headers
 
 ### Email DKIM/SPF/DMARC
 ```
-# DNS záznamy — povinné pro důvěryhodnost mailu
+# DNS records — required for email trustworthiness
 SPF:   v=spf1 include:sendgrid.net ~all
 DKIM:  v=DKIM1; k=rsa; p=MIGfMA0GCS...
 DMARC: v=DMARC1; p=quarantine; rua=mailto:dmarc@realportal.cz
@@ -473,96 +473,96 @@ DMARC: v=DMARC1; p=quarantine; rua=mailto:dmarc@realportal.cz
 
 ---
 
-## 7. Auditní stopa
+## 7. Audit trail
 
-Každé otevření full verze loguj:
+Log every access to the full version:
 
 ```php
 DocAccessLog::create([
     'message_id'  => $messageId,
     'client_id'   => $clientId,
     'accessed_at' => now(),
-    'ip_hash'     => hash('sha256', $request->ip()), // GDPR: neukládáme raw IP
+    'ip_hash'     => hash('sha256', $request->ip()), // GDPR: do not store raw IP
     'user_agent'  => $request->userAgent(),
     'token_used'  => $tokenId,
     'mode'        => 'token', // token | session | encrypted
 ]);
 ```
 
-Tím pádem v CRM vidíš:
-- Kdy klient poprvé otevřel nabídku
-- Kolikrát se vrátil
-- Ze které zprávy přišel
+This way the CRM shows you:
+- When the client first opened the offer
+- How many times they returned
+- Which message they came from
 
 ---
 
-## 8. Tok od vytvoření po otevření klientem
+## 8. Flow from creation to client opening
 
 ```
 [IS / backend]
-  1. Makléř vytvoří/schválí zprávu
-  2. IS sestaví JSON dle schématu
-  3. IS vygeneruje signed token nebo šifrovací klíč
-  4. IS renderuje mail šablonu (statická verze)
-  5. Mail odeslán přes SMTP / SendGrid / Mailgun
+  1. Agent creates/approves the message
+  2. IS assembles JSON according to the schema
+  3. IS generates signed token or encryption key
+  4. IS renders email template (static version)
+  5. Email sent via SMTP / SendGrid / Mailgun
 
-[Klientův emailový klient]
-  6. Klient vidí statický preview (bez JS)
-  7. Klikne "Otevřít interaktivní dokument →"
+[Client's email client]
+  6. Client sees static preview (no JS)
+  7. Clicks "Open interactive document →"
 
 [Server]
-  8. Příjem GET /doc/{id}?t={token}
-  9. Ověření tokenu / session / dešifrování
-  10. Logování přístupu
-  11. Vrácení full PolyDoc HTML
+  8. Receives GET /doc/{id}?t={token}
+  9. Verifies token / session / decryption
+  10. Logs access
+  11. Returns full PolyDoc HTML
 
-[Klientův prohlížeč]
-  12. Poly interpreter načte JSON z #raw-data
-  13. Fetchne živý stav z API (is_confirmed, is_cancelled...)
-  14. Vyrendruje dokument s aktuálním stavem
-  15. Zobrazí akční tlačítka (Zrušit, Přidat do kalendáře...)
+[Client's browser]
+  12. Poly interpreter loads JSON from #raw-data
+  13. Fetches live state from API (is_confirmed, is_cancelled...)
+  14. Renders document with current state
+  15. Displays action buttons (Cancel, Add to calendar...)
 
 [IS / backend — webhook]
-  16. Klient klikne akci → POST na API
-  17. IS zpracuje, změní stav, případně pošle novou zprávu
+  16. Client clicks action → POST to API
+  17. IS processes it, changes state, optionally sends a new message
 ```
 
 ---
 
 ## 9. GDPR checklist
 
-- [ ] Do preview mailu nedávat RČ, celé adresy, bankovní účty
-- [ ] Citlivé dokumenty šifrovat (Mód 3)
-- [ ] Tokeny mají expiraci (max 30 dní pro nabídky, 7 dní pro potvrzení)
-- [ ] Auditní logy anonymizovat (hash IP, ne raw)
-- [ ] Klient může požádat o smazání → smazat tokeny a logy
-- [ ] V patičce mailu odkaz na GDPR informace portálu
+- [ ] Do not include national ID numbers, full addresses, or bank accounts in the preview email
+- [ ] Encrypt sensitive documents (Mode 3)
+- [ ] Tokens have an expiry (max 30 days for offers, 7 days for confirmations)
+- [ ] Anonymise audit logs (hashed IP, not raw)
+- [ ] Client can request deletion → delete tokens and logs
+- [ ] Include a link to the portal's GDPR information page in the email footer
 
 ---
 
-## 10. MVP implementační plán
+## 10. MVP implementation plan
 
-### Sprint 1 — základ (2 týdny)
-- [ ] Datový model zpráv v IS (message, token, access_log)
-- [ ] Generátor mail verze pro typ "Potvrzení prohlídky"
-- [ ] Server route s token ověřením
-- [ ] Full verze (polydoc-full.html šablona)
+### Sprint 1 — foundation (2 weeks)
+- [ ] Message data model in IS (message, token, access_log)
+- [ ] Email version generator for message type "Viewing confirmation"
+- [ ] Server route with token verification
+- [ ] Full version (polydoc-full.html template)
 
-### Sprint 2 — typy zpráv (2 týdny)
-- [ ] Typ "Nabídka nemovitosti" (property_hero, property_stats)
-- [ ] Typ "Stavová zpráva"
-- [ ] Nové typy sekcí: property_hero, detail_grid, agent_card, next_steps
+### Sprint 2 — message types (2 weeks)
+- [ ] Type "Property offer" (property_hero, property_stats)
+- [ ] Type "Status update"
+- [ ] New section types: property_hero, detail_grid, agent_card, next_steps
 
-### Sprint 3 — auth a bezpečnost (1 týden)
-- [ ] Cookie session mód pro přihlášené klienty
+### Sprint 3 — auth and security (1 week)
+- [ ] Cookie session mode for logged-in clients
 - [ ] Magic link login
-- [ ] DKIM/SPF/DMARC nastavení
-- [ ] Auditní logy v CRM
+- [ ] DKIM/SPF/DMARC configuration
+- [ ] Audit logs in CRM
 
-### Sprint 4 — šifrování (1 týden, volitelné)
-- [ ] AES-GCM šifrování pro citlivé dokumenty
-- [ ] Client-side dešifrování v poly interpreteru
+### Sprint 4 — encryption (1 week, optional)
+- [ ] AES-GCM encryption for sensitive documents
+- [ ] Client-side decryption in poly interpreter
 
 ---
 
-*PolyDoc Deployment Guide v1.0 · Realitní portál · 2026-03-12*
+*PolyDoc Deployment Guide v1.0 · Real Estate Portal · 2026-03-12*

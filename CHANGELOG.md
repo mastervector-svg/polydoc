@@ -7,6 +7,43 @@ PolyDoc format versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.0] — 2026-03-21
+
+### Added
+
+#### Fill Providers (spec/POLYDOC_ENVELOPE.md §11)
+- `fill.mode: "on-demand"` with external service providers
+- `fill.src` URI — plain HTTPS URL or registered scheme (`katastr://`, `cob://`, `lei://`, `vat://eu/`, `osm://`, `cad://`)
+- `fill.cache_ttl` — provider cache with `slot_state: "stale"` lifecycle
+- `auth_from_part` — credentials from encrypted envelope part, never exposed in HTML
+- International examples: CZ/DE/UK real estate, EU cross-border due diligence, building permits
+- `POST /envelope/:id/fill-provider` API endpoint (spec)
+
+#### Workflow, Access Control & DRM (spec/POLYDOC_WORKFLOW.md — new file)
+- `encryption.key_location: "remote"` — key server with `key_ttl`, `key_grace`, `max_opens`, `device_binding`, `revocable`
+- `access.mode: "time_lock"` — NTP multivalidation (n-of-m sources), countdown display
+- `signature.timestamp` — RFC 3161 Trusted Timestamp Authority (TSA) integration
+- `quorum` block — n-of-m approvals with ES256 signatures, `on_quorum` actions (webhook, git_merge, unlock)
+- `quorum.four_eyes: true` + `notary` block — eIDAS-compliant qualified electronic signature
+- `git` block — auto-commit on slot_fill/approval, document as deploy gate
+- `encryption.export_lock` — disable export JSON, copy protection, per-user watermark, export time window
+- Embedded media: `video/*`, `audio/*`, `application/pdf` via blob URL (data never written to disk)
+- `application/wasm` — sandboxed WebAssembly apps running inside the document
+- `playback` block — `inline`, `allow_download`, `max_plays`, `watermark`
+
+#### Documentation
+- All spec files translated to English (POLYDOC_SPEC.md, POLYDOC_ENVELOPE.md, POLYDOC_TRANSFER.md, CHANGELOG.md)
+- Use case 5: Live Commerce Document — PolyDoc as EDI replacement with live listings
+- openapi.yaml translated to English (Czech version preserved as openapi.cs.yaml)
+- DEPLOYMENT_REALTY.md translated to English (Czech version preserved as DEPLOYMENT_REALTY.cs.md)
+
+### Changed
+- `templates/polydoc-envelope.html` extracted from inline buildEnvelopeHtml() — template file now used
+- README: Five Use Cases (added Live Commerce Document)
+- Roadmap updated to reflect v1.1 completed items and new v1.2/v2.0 items
+
+---
+
 ## [1.1.0] — 2026-03-20
 
 ### Added
