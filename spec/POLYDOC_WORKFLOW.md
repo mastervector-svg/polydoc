@@ -397,4 +397,265 @@ All features are **additive** — documents without these fields behave exactly 
 
 ---
 
+---
+
+## §6 Trusted Timestamp & Remote Notary
+
+### The problem with self-reported time
+
+A signer can set their system clock to any time. A signature with `signed_at: "2026-01-01"` proves nothing about when the document was actually signed — unless a trusted third party attests to it.
+
+**RFC 3161 Trusted Timestamp Authority (TSA)** solves this: the TSA signs a token that cryptographically binds the document hash to the current time as observed by the TSA. The signer cannot forge this — they can only request it, and the TSA records it.
+
+### Signature block with timestamp
+
+```json
+"signature": {
+  "algorithm": "ES256",
+  "value": "base64-es256-signature",
+  "signed_at": "2026-03-21T10:14:33Z",
+  "timestamp": {
+    "authority": "https://tsa.digicert.com/tsa",
+    "token": "base64-rfc3161-timestamp-token",
+    "algorithm": "SHA256",
+    "serial": "1234567890",
+    "policy": "1.3.6.1.4.1.311.3.2.1"
+  },
+  "location": {
+    "country": "CZ",
+    "hint": "Prague HQ"
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `timestamp.authority` | TSA endpoint that issued the token |
+| `timestamp.token` | Base64-encoded RFC 3161 TSTInfo structure |
+| `timestamp.algorithm` | Hash algorithm used for the token (SHA256 recommended) |
+| `timestamp.serial` | TSA-assigned serial number for this token |
+| `location.country` | ISO 3166-1 alpha-2 country code (optional) |
+| `location.hint` | Human-readable location hint (optional, not legally binding) |
+
+### What the timestamp proves
+
+The RFC 3161 token binds three things together, attested by the TSA's own certificate chain:
+1. The exact document state (SHA256 of the document at signing time)
+2. The precise UTC timestamp as observed by the TSA
+3. The TSA's identity (verified via its certificate)
+
+Even if the signer's private key is later compromised, the timestamp token independently proves the document existed in this exact state at this exact time.
+
+Free TSAs that issue valid RFC 3161 tokens: DigiCert, GlobalSign, Sectigo, FreeTSA.
+
+---
+
+## §7 Remote Notary & Four-Eyes Principle
+
+### Why technical DRM is not enough
+
+Any technical protection can be defeated by a sufficiently motivated person with physical access to the decrypted output (screenshot, camera, notes). The goal of DRM is not to make extraction *impossible* — it is to make it *unambiguously attributable*.
+
+**The combination that achieves this:**
+
+```
+TSA timestamp     → proves WHO signed, WHEN, in what document state
+Four eyes         → requires conspiracy between at least two people to leak
+Watermark         → traces any leak back to a specific person
+Remote notary     → independent third-party certifies the entire transaction
+```
+
+No single person can claim "I didn't sign this" or "the document was different". No single person can leak without implicating themselves. The result is not technical impossibility — it is **legal non-repudiation**.
+
+### Four-eyes quorum as DRM
+
+The quorum system from §3 becomes a DRM enforcement mechanism when `required: 2`:
+
+```json
+"quorum": {
+  "required": 2,
+  "four_eyes": true,
+  "participants": [
+    { "id": "primary",  "key_hint": "sha256:...", "role": "Responsible Person" },
+    { "id": "witness",  "key_hint": "sha256:...", "role": "Independent Witness" }
+  ],
+  "on_quorum": { "action": "unlock" }
+}
+```
+
+`four_eyes: true` means both participants receive independent TSA timestamps and their signatures are bound together in a combined token. A leak now requires both people to cooperate — any unilateral leak is immediately attributable to whoever broke ranks.
+
+### Remote notary declaration
+
+```json
+"notary": {
+  "service": "https://notary.example.com",
+  "jurisdiction": "CZ",
+  "level": "qualified",
+  "witnesses": ["primary", "witness"],
+  "notary_token": "base64-notary-certification",
+  "legal_ref": "eIDAS Regulation (EU) No 910/2014, Article 26"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `service` | Notary service endpoint |
+| `jurisdiction` | Legal jurisdiction under which the notarisation is valid |
+| `level` | `"simple"` / `"advanced"` / `"qualified"` (eIDAS LoA) |
+| `witnesses` | Participant IDs from `quorum.participants` who are co-signers |
+| `notary_token` | Notary-issued certification token |
+| `legal_ref` | Applicable legal framework |
+
+### eIDAS compliance levels
+
+| Level | Equivalent to | Requirements |
+|-------|--------------|--------------|
+| `simple` | Basic electronic signature | Any digital identifier |
+| `advanced` | Advanced Electronic Signature (AdES) | Unique to signer, detectable tampering, ES256 |
+| `qualified` | Qualified Electronic Signature (QES) | Qualified TSA + qualified certificate + HSM |
+
+`qualified` level is legally equivalent to a handwritten signature in all EU member states under eIDAS.
+
+### The complete non-repudiation stack
+
+```
+1. Signer A signs → ES256 signature + RFC 3161 TSA timestamp
+2. Signer B signs (four eyes) → ES256 signature + RFC 3161 TSA timestamp
+3. Both signatures + both timestamps → submitted to remote notary
+4. Notary issues certification token → stored in document manifest
+5. Watermark embedded in rendered content → tied to Signer A's identity
+6. Export lock active → PolyDoc.exportJSON() disabled
+7. Key TTL enforced → document re-locks after 24h
+
+Result:
+  - WHO: cryptographically identified (ES256 key)
+  - WHEN: RFC 3161 timestamp, TSA-attested
+  - WHAT: SHA256 of exact document state at signing
+  - WHERE: jurisdiction declared, notary certified
+  - WHY impossible to deny: four eyes + notary token
+  - WHY leak is traceable: watermark tied to identity
+```
+
+This is eIDAS Qualified Electronic Signature level — legally binding in all EU member states, and most jurisdictions globally that accept digital signatures.
+
+---
+
+## §8 Embedded Media & Applications
+
+### Data that never leaves the envelope
+
+HTML5 can render video, audio, and interactive applications directly from in-memory data using `URL.createObjectURL()`. The data is decoded from the envelope's `parts[]`, loaded into a temporary blob URL that exists only in browser memory, and revoked immediately after use.
+
+```javascript
+// Interpreter — playing a video part without writing to disk
+const part = envelope.parts.find(p => p.id === 'training-video');
+const raw = decrypt(decompress(part.data));  // in-memory only
+const blob = new Blob([raw], { type: 'video/mp4' });
+const url = URL.createObjectURL(blob);
+videoElement.src = url;
+videoElement.onended = () => URL.revokeObjectURL(url);  // gone from memory
+```
+
+The blob URL (`blob:https://...`) is scoped to the current tab and session. It cannot be bookmarked, shared, or accessed from another origin. When revoked, the data is released from memory. No file is written to disk by the interpreter.
+
+### Supported embedded types
+
+| MIME type | Rendering | Notes |
+|-----------|-----------|-------|
+| `video/mp4`, `video/webm` | `<video>` element via blob URL | Inline playback, no download |
+| `audio/mpeg`, `audio/ogg`, `audio/wav` | `<audio>` element via blob URL | No download |
+| `application/pdf` | PDF.js inline viewer | Rendered in canvas, not browser native PDF viewer |
+| `text/html` | `<iframe sandbox>` | Sandboxed mini-application |
+| `application/wasm` | WebAssembly runtime | Executable module inside the document |
+| `image/*` | `<img>` tag | Already supported in v1.0 |
+| `application/json` | Syntax-highlighted viewer | Already supported in v1.0 |
+
+### Part declaration for embedded media
+
+```json
+{
+  "id": "training-video",
+  "type": "video/mp4",
+  "label": { "en": "Module 3 — Security Fundamentals" },
+  "encrypted": true,
+  "compressed": true,
+  "playback": {
+    "inline": true,
+    "allow_fullscreen": true,
+    "allow_download": false,
+    "allow_picture_in_picture": false,
+    "max_plays": 3,
+    "watermark": "user_email"
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `playback.inline` | Render in modal inside the document (vs. download prompt) |
+| `playback.allow_download` | If `false`, no download button, blob URL not exposed |
+| `playback.max_plays` | Key server refuses to issue key after N plays. `null` = unlimited |
+| `playback.watermark` | Embed user identity into the rendered stream as a visible or steganographic watermark |
+
+### WebAssembly embedded applications
+
+A `application/wasm` part can be a fully functional application running inside the document — a calculator, a form, a viewer, a game, a CAD preview:
+
+```json
+{
+  "id": "cad-viewer",
+  "type": "application/wasm",
+  "label": { "en": "Interactive floor plan viewer" },
+  "encrypted": true,
+  "wasm": {
+    "entry": "viewer.wasm",
+    "imports": { "env": "document-sandbox" },
+    "canvas_id": "wasm-canvas",
+    "allow_network": false,
+    "allow_filesystem": false
+  }
+}
+```
+
+The WASM module runs in a sandboxed context — no network access, no filesystem, no access to the outer document's DOM beyond its declared canvas. The envelope is the container; the WASM module is the application.
+
+### Combined DRM + embedded media
+
+```
+1. Video part encrypted with AES-256-GCM
+2. User opens document → key fetched from key server (authenticated)
+3. key_ttl: 7200 → key valid for 2 hours
+4. max_plays: 5 → key server tracks play count
+5. Video decoded in memory → blob URL → played in <video>
+6. allow_download: false → no download button, blob URL not exposed to user
+7. watermark: "user_email" → viewer's email burned into video stream
+8. URL.revokeObjectURL() on close → data released from memory
+9. After 2h or 5 plays → key server returns 403 → document re-locks
+```
+
+An attacker who captures the network traffic sees only the encrypted blob and the HTTPS key exchange. An attacker who captures the decrypted blob gets a watermarked copy that traces back to their account.
+
+---
+
+## §9 Summary — Feature Matrix
+
+| Feature | `header` field | Requires server? | Works offline? |
+|---------|---------------|-----------------|----------------|
+| Fragment key (v1.0) | `encryption.key_location: "url_fragment"` | No | Yes |
+| Remote key / DRM | `encryption.key_location: "remote"` | Yes (key server) | Grace period only |
+| Export lock | `encryption.export_lock` | No | Yes |
+| Time-lock | `access.mode: "time_lock"` | Yes (NTP + key server) | No |
+| TSA timestamp | `signature.timestamp` | Yes (TSA, at sign time) | Yes (token embedded) |
+| Four-eyes + notary | `quorum.four_eyes` + `notary` | Yes (notary service) | Read-only |
+| Quorum voting | `quorum` | Yes (sign API) | Read-only |
+| Git integration | `git` | Yes (Git API) | Read-only |
+| Fill Providers | `fill.src` (slot) | Yes (provider) | Stale cache only |
+| Embedded media | `playback` on part | No (data inline) | Yes |
+| WASM application | `wasm` on part | No (data inline) | Yes |
+
+All features are **additive** — documents without these fields behave exactly as defined in `POLYDOC_SPEC.md`.
+
+---
+
 *PolyDoc Workflow & Access Control v1.0 · MIT licence · 2026-03-21*
