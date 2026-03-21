@@ -607,6 +607,14 @@ See [POLYDOC_ENVELOPE.md](POLYDOC_ENVELOPE.md) for the complete specification.
 
 ---
 
+## 17. Workflow, Access Control & DRM
+
+For advanced lifecycle features — remote key / DRM, time-locked documents, quorum voting, and Git-backed versioning — see [POLYDOC_WORKFLOW.md](POLYDOC_WORKFLOW.md).
+
+These are additive extensions. Documents without these fields behave exactly as defined in this spec.
+
+---
+
 ## 15. GitHub & spec reference
 
 ```json
