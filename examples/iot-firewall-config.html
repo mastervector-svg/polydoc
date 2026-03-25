@@ -33,8 +33,9 @@
       "signature_algo": "SHA256",
       "signature_covers": "config+json block content",
       "signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "_signature_note": "DEMO ONLY — this is a placeholder value, not a real signature",
       "encrypted": false,
-      "note": "Set encrypted:true + encrypt config+json block with AES-256-GCM, key=HMAC(device_secret, device_id) for zero-trust deployment"
+      "_encryption_note": "PolyDoc defines the format (where the encrypted block goes, how it is flagged). Key management — eFuse secrets, secure elements, key servers — is outside PolyDoc scope and is the responsibility of the device manufacturer."
     },
     "audit": {
       "created_at": "2026-03-01T10:00:00Z",

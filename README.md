@@ -254,10 +254,11 @@ The device checks both before applying anything. Incompatible config = rejected,
 A modified file fails verification before any value is applied.
 "Who changed the pressure threshold and when?" — it's in the audit trail inside the file.
 
-**Encryption for zero-trust deployment** — encrypt the config block with
-`AES-256-GCM(config, HMAC(device_secret, device_id))`.
-The file is readable only by the device it was generated for.
-You can email it, put it in a public repo, or store it in an S3 bucket — without a VPN.
+**Encryption for zero-trust deployment** — PolyDoc defines *where* the encrypted block goes
+and *how it's flagged* (`encrypted: true`, `algorithm`, `key_hint`). The actual key management
+— burning a secret into eFuse, using a secure element, or running a key server — is your
+responsibility and entirely outside PolyDoc's scope. The examples use placeholder signatures
+and pseudocode; do not copy them into production.
 
 **Air-gapped maintenance** — technician downloads `status.html` from the device via USB or Bluetooth.
 Opens it on a tablet (no app, just Chrome). Sees live telemetry rendered as an interactive dashboard.
@@ -294,6 +295,12 @@ what the device is and how to talk to it — without scraping, without OCR, with
 | [device-passport.html](examples/device-passport.html) | Digital birth certificate: identity, API spec, certs, warranty countdown, manufacturer signature. |
 
 Open any of them in a browser. Then open the source. The file is the data. The data is the file.
+
+> **⚠ Examples are demonstrations, not production security.**
+> Signatures and keys in these files are placeholders. PolyDoc defines the *format* —
+> where signatures live, how schema versions are declared, how encrypted blocks are flagged.
+> Key generation, eFuse burning, secure element integration, and key server design
+> are outside PolyDoc's scope and must be implemented by the device manufacturer.
 
 ---
 
