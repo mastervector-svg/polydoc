@@ -39,6 +39,10 @@ Click the button → full interactive version loads on your server.
 | Invoice — static mail version | [faktura-mail.html](https://mastervector-svg.github.io/polydoc/examples/faktura-mail.html) |
 | Real estate portal — transfer package | [realportal-transfer.html](https://mastervector-svg.github.io/polydoc/examples/realportal-transfer.html) |
 | **Envelope demo** — invoice package (cover letter + JSON + terms) | [envelope-demo.html](https://mastervector-svg.github.io/polydoc/examples/envelope-demo.html) |
+| **IoT: Interactive config** — config file = admin panel, zero backend | [interactive-config.html](https://mastervector-svg.github.io/polydoc/examples/interactive-config.html) |
+| **IoT: Firewall config** — schema versioning, signature, POST to device | [iot-firewall-config.html](https://mastervector-svg.github.io/polydoc/examples/iot-firewall-config.html) |
+| **IoT: Sensor telemetry** — log file that renders itself as a dashboard | [iot-sensor-telemetry.html](https://mastervector-svg.github.io/polydoc/examples/iot-sensor-telemetry.html) |
+| **IoT: Device passport** — identity, API spec, warranty, manufacturer signature | [device-passport.html](https://mastervector-svg.github.io/polydoc/examples/device-passport.html) |
 
 ---
 
@@ -71,7 +75,7 @@ A single `.html` file that is simultaneously:
 
 ---
 
-## Five Use Cases
+## Six Use Cases
 
 ### 1. Transactional Documents
 Invoices, confirmations, offers, contracts.
@@ -187,6 +191,110 @@ The manifest signature guarantees that the listings the buyer saw at order time 
 
 [→ Fill Providers spec](spec/POLYDOC_ENVELOPE.md#11-fill-providers--on-demand-slot-filling-by-external-service)
 
+### 6. IoT & Embedded Devices — the killer use case
+
+> *"I used to ship 8 MB of React to configure a smart socket. Now I ship one HTML file."*
+
+Every IoT device has the same dirty secret: the hardware is simple, but the configuration UI is a nightmare. You need a backend, a frontend framework, CORS headers, a build pipeline, and a cloud account — just so a technician can change a threshold value on a €40 sensor.
+
+PolyDoc collapses that entire stack into a single file.
+
+#### How it works
+
+The device stores **one file** in flash memory. When you connect, it serves it.
+Your phone's browser opens it and renders a full admin panel — no app, no account, no cloud.
+You change the values, click Save, and the browser POSTs the **same file** back to the device with your changes baked in. The device reads the JSON block, applies it, restarts.
+
+```
+ESP32 flash          Your browser              Back to device
+─────────────        ──────────────────        ──────────────
+config.html    →     renders admin panel  →    POST /config
+               ←     edit values          ←
+               ←     "Save" = mutated     →    device reads
+                     same HTML file            config+json block
+```
+
+The device-side handler is ~50 lines of MicroPython:
+
+```python
+from html.parser import HTMLParser
+import json
+
+class ConfigExtractor(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.in_cfg = False
+        self.data = ""
+    def handle_starttag(self, tag, attrs):
+        if tag == "script" and dict(attrs).get("type") == "application/config+json":
+            self.in_cfg = True
+    def handle_endtag(self, tag):
+        if tag == "script": self.in_cfg = False
+    def handle_data(self, data):
+        if self.in_cfg: self.data += data
+
+def apply_config(html_body):
+    p = ConfigExtractor()
+    p.feed(html_body)
+    cfg = json.loads(p.data)
+    verify_signature(cfg)   # reject tampered configs
+    check_schema_version(cfg)  # reject incompatible configs
+    apply(cfg)              # write to NVS / restart services
+```
+
+That's it. No HTTP framework. No REST API design. No JSON schema debate.
+The entire admin panel — UI, data, documentation, validation logic — is in the HTML file.
+
+#### What's solved automatically
+
+**Version compatibility** — every config file carries `schema_version` and `firmware_min`.
+The device checks both before applying anything. Incompatible config = rejected, not silently broken.
+
+**Tamper detection** — the manufacturer signs the config block (SHA256-RSA).
+A modified file fails verification before any value is applied.
+"Who changed the pressure threshold and when?" — it's in the audit trail inside the file.
+
+**Encryption for zero-trust deployment** — encrypt the config block with
+`AES-256-GCM(config, HMAC(device_secret, device_id))`.
+The file is readable only by the device it was generated for.
+You can email it, put it in a public repo, or store it in an S3 bucket — without a VPN.
+
+**Air-gapped maintenance** — technician downloads `status.html` from the device via USB or Bluetooth.
+Opens it on a tablet (no app, just Chrome). Sees live telemetry rendered as an interactive dashboard.
+Edits config, signs with their own key, uploads back.
+The audit trail now says: *"Pressure threshold changed by Karel Novák, 2026-03-22 11:30"*.
+
+**Self-rendering logs** — instead of sending a CSV or raw JSON, the device generates a PolyDoc telemetry file.
+Open it in a browser → you see a Grafana-style dashboard with anomaly markers, event timeline, and export buttons.
+No Grafana. No InfluxDB. No server. The log carries its own visualization.
+
+**Device Passport** — shipped in the box (or served from the device). One HTML file containing:
+identity, hardware specs, full API documentation, certifications with expiry dates, warranty terms,
+firmware changelog, and manufacturer signature. Your AI assistant reads it and knows exactly
+what the device is and how to talk to it — without scraping, without OCR, without a portal login.
+
+#### The numbers
+
+| Traditional IoT admin UI | PolyDoc |
+|--------------------------|---------|
+| React frontend (~8 MB) + Node backend + CORS + build pipeline | 1 HTML file (~50 KB) |
+| Separate config file (`config.json`) + viewer app | Config IS the viewer |
+| "What firmware does this device need?" → check docs portal | Read `firmware_min` from the file |
+| Verify device authenticity → call manufacturer API | Verify signature locally, offline |
+| Read device logs → install Grafana + InfluxDB | Open the log file in a browser |
+| Update config → SSH + edit JSON + restart | Edit in browser + click Save |
+
+#### Examples
+
+| File | What it shows |
+|------|--------------|
+| [interactive-config.html](examples/interactive-config.html) | Config file = admin panel. Edit values, download updated file. Zero backend. |
+| [iot-firewall-config.html](examples/iot-firewall-config.html) | Firewall/router config: schema versioning, signature, POST to device, air-gapped download. |
+| [iot-sensor-telemetry.html](examples/iot-sensor-telemetry.html) | Sensor log that renders itself as a dashboard. Anomalies flagged in the data, highlighted in charts. |
+| [device-passport.html](examples/device-passport.html) | Digital birth certificate: identity, API spec, certs, warranty countdown, manufacturer signature. |
+
+Open any of them in a browser. Then open the source. The file is the data. The data is the file.
+
 ---
 
 ## Why `.html`?
@@ -237,7 +345,7 @@ IT cannot say no because the user is asking.
     "doc_id": "INV-2026-001",
     "doc_type": "invoice",
     "signature": { "algorithm": "ES256", "value": "..." },
-    "compression": { "algorithm": "deflate", "threshold": 10240 }
+    "compression": { "algorithm": "deflate-raw", "threshold": 10240 }
   },
   "metadata": {
     "title": { "en": "Invoice", "cs": "Faktura" },
@@ -399,7 +507,7 @@ docker run -p 3000:3000 -e LLM_BASE_URL -e LLM_API_KEY -e LLM_MODEL \
 - [x] Channel API (OpenAPI 3.1)
 - [x] JSON Schema (`schema/poly-v1.0.schema.json`)
 - [x] Node.js render engine (POST /render, POST /validate)
-- [x] DEFLATE compression + AES-256-GCM encryption spec
+- [x] deflate-raw compression (RFC 1951, cross-browser + MicroPython compatible) + AES-256-GCM encryption spec
 - [x] Lazy load spec (inline / on-demand modes)
 - [x] Human/Agent view toggle (demo)
 
