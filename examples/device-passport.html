@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Device Passport · MaxSense T3-Pro #MST3-00847</title>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       POLYDOC DESCRIPTOR
+       This block is read by AI assistants, inventory systems, and device
+       management platforms. No scraping, no OCR — just parse the JSON.
+
+       When your AI assistant asks "what is this device and how do I talk to it?"
+       — this block answers directly.
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <script type="application/polydoc+json">
+  {
+    "polydoc": "1.2",
+    "type": "device-passport",
+    "title": "Device Passport — MaxSense T3-Pro",
+    "description": "Digital birth certificate for MaxSense T3-Pro industrial sensor unit. Contains: device identity, API specification, warranty, certifications, configuration defaults, and manufacturer signature. One file — valid for the lifetime of the device.",
+    "device": {
+      "id": "MST3-00847",
+      "model": "MaxSense T3-Pro",
+      "manufacturer": "MaxSense Industries s.r.o.",
+      "manufactured": "2026-01-14",
+      "batch": "B2026-01",
+      "hardware_rev": "3.2",
+      "firmware": "2.4.1",
+      "firmware_update_url": "https://firmware.maxsense.io/t3-pro/latest"
+    },
+    "security": {
+      "signed": true,
+      "signature_algo": "SHA256-RSA",
+      "signer": "MaxSense Industries — Device Signing CA",
+      "signer_fingerprint": "4A:F2:9C:11:38:7D:E4:B2:0F:55:A1:C8:3E:76:D9:42",
+      "signature": "3082020a0282010100c3f9a2e4b817d3f561a4c8229f1b73de9a5c2f8e4b1d7a6c3f9e2b8d4a71c5f3e9b2d8a4c7f1e5b3d9a2c8f4e1b7d3a9c5f2e8b4d1a7c3f9e5b2d8a4c6f3e1b9d7a5c2f8e4b3d9a1c7f5e2b8d4a6c3f9e1b7d3a8c5f2e9b4d1a7c3f8e5b2d9a4c6f1e3b7d5a9c2f8e4b1d7a3c9f5e2b8d6a4c3f9e1b5d3a8c7f2e4b9d1a6c5f3e8b2d7a4c9f1e5b3d8a2c6f4e1b9d7a5c3f8e2b4d9a1c7f5e3b8d6a4c2f9e1b7d3a5c8f2e4b1d9a7c3f5e8b2d4a9c6f1e3b7d5a2c8f4e9b1d6a3c7f5e2b8d4a1c9f3e7b5d2a8c4f1e9b3d7a5c2f8e4b6d1a9c3f7e5b2d8a4c1f9e3b7d5a2c6f4e8b1d9a3c7f5e2b4d8a1c9f3e6b7d5a2c8f4e1b9d3a7c5f2e8b4d6a1c3f9e7b5d2a8c4f1",
+      "verify_url": "https://verify.maxsense.io/passport/MST3-00847"
+    },
+    "api": {
+      "protocol": "MQTT + HTTP",
+      "mqtt_topic_prefix": "maxsense/MST3-00847",
+      "http_port": 80,
+      "config_endpoint": "POST /config  (accepts PolyDoc device-config)",
+      "status_endpoint": "GET  /status  (returns PolyDoc telemetry)",
+      "openapi_version": "3.0",
+      "note": "Full OpenAPI spec in passport.api section below"
+    },
+    "warranty": {
+      "valid_until": "2031-01-14",
+      "terms_url": "https://maxsense.io/warranty",
+      "service_email": "service@maxsense.io",
+      "registration_required": false
+    }
+  }
+  </script>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       DEVICE IDENTITY & SPECS
+       Structured data — parseable by inventory and CMDB systems.
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <script type="application/passport+json" id="passport-data">
+  {
+    "identity": {
+      "serial":       "MST3-00847",
+      "model":        "MaxSense T3-Pro",
+      "manufacturer": "MaxSense Industries s.r.o.",
+      "country":      "CZ",
+      "manufactured": "2026-01-14",
+      "batch":        "B2026-01",
+      "hardware_rev": "3.2",
+      "firmware":     "2.4.1"
+    },
+    "hardware": {
+      "cpu":          "ESP32-S3 dual-core 240 MHz",
+      "flash":        "8 MB",
+      "ram":          "512 KB",
+      "connectivity": ["Wi-Fi 802.11 b/g/n", "Ethernet 10/100", "RS-485 Modbus"],
+      "sensors": [
+        { "name": "temperature", "range": "-40 to +125 °C", "accuracy": "±0.2 °C", "output": "temperature_C" },
+        { "name": "pressure",    "range": "0–16 bar",       "accuracy": "±0.5%",   "output": "pressure_bar"  },
+        { "name": "humidity",    "range": "0–100% RH",      "accuracy": "±2% RH",  "output": "humidity_pct"  },
+        { "name": "flow",        "range": "0–50 L/min",     "accuracy": "±1%",     "output": "flow_lpm"      }
+      ],
+      "power": "9–36V DC / PoE 802.3af",
+      "ip_rating": "IP67",
+      "operating_temp": "-20 to +85 °C",
+      "dimensions_mm": "120 × 80 × 45",
+      "weight_g": 310
+    },
+    "api": {
+      "http_port": 80,
+      "mqtt_topic_prefix": "maxsense/MST3-00847",
+      "endpoints": [
+        { "method": "GET",  "path": "/status",  "desc": "Current sensor readings as PolyDoc telemetry",    "auth": "none"   },
+        { "method": "GET",  "path": "/config",  "desc": "Current config as PolyDoc device-config",         "auth": "none"   },
+        { "method": "POST", "path": "/config",  "desc": "Apply new config (accepts PolyDoc device-config)", "auth": "bearer" },
+        { "method": "GET",  "path": "/log",     "desc": "Last 30 days telemetry as PolyDoc telemetry",     "auth": "none"   },
+        { "method": "GET",  "path": "/passport","desc": "This file",                                        "auth": "none"   },
+        { "method": "POST", "path": "/reboot",  "desc": "Reboot device",                                   "auth": "bearer" },
+        { "method": "POST", "path": "/update",  "desc": "OTA firmware update",                              "auth": "bearer" }
+      ],
+      "mqtt_topics": [
+        { "topic": "maxsense/MST3-00847/telemetry", "direction": "publish",  "interval": "60s", "format": "JSON flat" },
+        { "topic": "maxsense/MST3-00847/config",    "direction": "subscribe","desc": "Receive config updates" },
+        { "topic": "maxsense/MST3-00847/cmd",       "direction": "subscribe","desc": "Commands: reboot, update, ping" },
+        { "topic": "maxsense/MST3-00847/status",    "direction": "publish",  "interval": "on-change", "format": "JSON" }
+      ]
+    },
+    "defaults": {
+      "sample_interval_s": 60,
+      "mqtt_enabled": true,
+      "http_enabled": true,
+      "log_retention_days": 30,
+      "alert_temp_max_C": 80,
+      "alert_pressure_min_bar": 2.0,
+      "timezone": "Europe/Prague",
+      "ntp_server": "pool.ntp.org"
+    },
+    "certifications": [
+      { "name": "CE",       "number": "CE-2026-MST3-0847", "issued": "2026-01-10", "valid_until": "2031-01-10" },
+      { "name": "RoHS",     "number": "ROHS-CZ-2026-0312", "issued": "2026-01-10", "valid_until": null         },
+      { "name": "IP67",     "number": "IP67-IEC-60529",    "issued": "2025-11-20", "valid_until": null         },
+      { "name": "ATEX",     "number": "ATEX-II-2G-Ex-e",  "issued": "2025-12-01", "valid_until": "2030-12-01" }
+    ],
+    "warranty": {
+      "valid_until": "2031-01-14",
+      "coverage": "Manufacturing defects, sensor calibration drift > spec",
+      "exclusions": "Physical damage, water ingress beyond IP67, unauthorized modification",
+      "service_email": "service@maxsense.io",
+      "rma_url": "https://maxsense.io/rma"
+    },
+    "changelog": [
+      { "version": "2.4.1", "date": "2026-02-15", "note": "Fix: MQTT reconnect loop on DHCP timeout" },
+      { "version": "2.4.0", "date": "2026-01-20", "note": "Add: PolyDoc telemetry export, deflate-raw compression" },
+      { "version": "2.3.2", "date": "2025-11-01", "note": "Fix: pressure sensor calibration offset at low temps" },
+      { "version": "2.3.0", "date": "2025-09-10", "note": "Add: OTA update, HTTP API, PolyDoc config support" }
+    ]
+  }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0d1117; --surface: #161b22; --surface2: #21262d;
+      --border:  #30363d; --accent:  #58a6ff; --accent2: #3fb950;
+      --text:    #e6edf3; --text2:   #8b949e;
+      --ok:      #3fb950; --warn:    #d29922; --err:     #f85149;
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 14px; line-height: 1.6; padding: 28px 16px 60px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+
+    /* ── Hero header ── */
+    .hero {
+      background: linear-gradient(135deg, #161b22 0%, #1a2233 100%);
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 28px 28px 24px; margin-bottom: 20px;
+      display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start;
+    }
+    .hero-title { font-size: 22px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 4px; }
+    .hero-model { font-size: 13px; color: var(--text2); margin-bottom: 14px; }
+    .hero-ids { display: flex; flex-wrap: wrap; gap: 8px; }
+    .id-chip {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 10px; font-size: 11px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .id-chip .k { color: var(--text2); }
+    .id-chip .v { color: var(--text); font-family: monospace; font-weight: 600; }
+    .hero-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .badge {
+      font-size: 10px; font-weight: 700; border-radius: 5px; padding: 3px 10px;
+      white-space: nowrap; letter-spacing: 0.3px;
+    }
+    .badge-polydoc { background: rgba(88,166,255,.12); color: var(--accent);  border: 1px solid rgba(88,166,255,.3); }
+    .badge-signed  { background: rgba(63,185,80,.12);  color: var(--ok);     border: 1px solid rgba(63,185,80,.3);  }
+    .badge-warrant { background: rgba(210,153,34,.10); color: var(--warn);   border: 1px solid rgba(210,153,34,.3); }
+
+    /* ── Signature bar ── */
+    .sig-bar {
+      background: rgba(63,185,80,.06); border: 1px solid rgba(63,185,80,.25);
+      border-radius: 8px; padding: 11px 16px; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      font-size: 12px;
+    }
+    .sig-icon { font-size: 18px; flex-shrink: 0; }
+    .sig-main { flex: 1; min-width: 200px; }
+    .sig-main strong { color: var(--ok); display: block; margin-bottom: 2px; }
+    .sig-main span { color: var(--text2); font-family: monospace; font-size: 10px; }
+    .sig-verify { font-size: 11px; color: var(--accent); text-decoration: none; white-space: nowrap; }
+    .sig-verify:hover { text-decoration: underline; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 2px; margin-bottom: 16px; flex-wrap: wrap; }
+    .tab {
+      padding: 8px 16px; border-radius: 7px; font-size: 13px; font-weight: 500;
+      color: var(--text2); background: var(--surface); border: 1px solid var(--border);
+      cursor: pointer; transition: .15s; user-select: none;
+    }
+    .tab:hover { color: var(--text); border-color: var(--accent); }
+    .tab.active { background: rgba(88,166,255,.12); color: var(--accent); border-color: rgba(88,166,255,.4); font-weight: 600; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 14px; overflow: hidden;
+    }
+    .card-header {
+      padding: 13px 18px; border-bottom: 1px solid var(--border);
+      font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+    }
+    .card-body { padding: 16px 18px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── KV table ── */
+    .kv { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .kv tr:not(:first-child) td { border-top: 1px solid var(--border); }
+    .kv td { padding: 7px 0; vertical-align: top; }
+    .kv td:first-child { color: var(--text2); width: 180px; font-size: 12px; padding-right: 16px; }
+    .kv td:last-child { color: var(--text); font-family: monospace; font-size: 12px; }
+
+    /* ── Sensors grid ── */
+    .sensors { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+    .sensor-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px;
+    }
+    .sensor-name { font-weight: 700; font-size: 13px; margin-bottom: 6px; color: var(--accent2); }
+    .sensor-meta { font-size: 11px; color: var(--text2); line-height: 1.7; }
+    .sensor-output { font-family: monospace; font-size: 11px; color: var(--accent); margin-top: 4px; }
+
+    /* ── API table ── */
+    .api-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .api-table th {
+      background: var(--surface2); text-align: left; padding: 7px 12px;
+      font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text2);
+    }
+    .api-table td { padding: 8px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+    .api-table tr:hover td { background: rgba(255,255,255,.02); }
+    .method { font-family: monospace; font-weight: 700; font-size: 11px; }
+    .method.GET  { color: var(--ok); }
+    .method.POST { color: var(--warn); }
+    .path { font-family: monospace; color: var(--accent2); }
+    .auth-badge {
+      display: inline-block; padding: 1px 6px; border-radius: 4px;
+      font-size: 10px; font-weight: 600;
+    }
+    .auth-none   { background: rgba(63,185,80,.12);  color: var(--ok); }
+    .auth-bearer { background: rgba(210,153,34,.12); color: var(--warn); }
+
+    /* ── Certs ── */
+    .certs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .cert {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px;
+    }
+    .cert-icon { font-size: 24px; flex-shrink: 0; }
+    .cert-name { font-weight: 700; font-size: 13px; color: var(--text); }
+    .cert-num  { font-family: monospace; font-size: 10px; color: var(--text2); margin-top: 2px; }
+    .cert-exp  { font-size: 10px; color: var(--text2); margin-top: 3px; }
+
+    /* ── Changelog ── */
+    .changelog { display: flex; flex-direction: column; gap: 0; }
+    .cl-item {
+      display: flex; gap: 14px; padding: 10px 0;
+      border-bottom: 1px solid var(--border); font-size: 12px;
+    }
+    .cl-item:last-child { border-bottom: none; }
+    .cl-ver { font-family: monospace; font-weight: 700; color: var(--accent); min-width: 50px; }
+    .cl-date { color: var(--text2); min-width: 90px; }
+    .cl-note { color: var(--text2); }
+    .cl-note strong { color: var(--text); }
+
+    /* ── Warranty ── */
+    .warranty-card {
+      background: rgba(210,153,34,.06); border: 1px solid rgba(210,153,34,.25);
+      border-radius: 10px; padding: 18px; margin-bottom: 14px;
+    }
+    .warranty-title { font-size: 15px; font-weight: 700; color: var(--warn); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .warranty-valid { font-size: 24px; font-weight: 800; color: var(--ok); margin-bottom: 4px; }
+    .warranty-sub { font-size: 11px; color: var(--text2); margin-bottom: 14px; }
+
+    /* ── AI callout ── */
+    .ai-callout {
+      background: rgba(88,166,255,.05); border: 1px solid rgba(88,166,255,.2);
+      border-radius: 8px; padding: 14px 18px; font-size: 12px; color: var(--text2);
+      line-height: 1.7; margin-top: 6px;
+    }
+    .ai-callout strong { color: var(--accent); }
+    .ai-callout code {
+      background: var(--surface2); border-radius: 3px; padding: 1px 5px;
+      font-family: monospace; font-size: 11px; color: var(--accent2);
+    }
+    .ai-callout h4 { color: var(--text); font-size: 12px; margin-bottom: 6px; }
+    .ai-callout ul { margin-left: 18px; margin-top: 4px; }
+    .ai-callout li { margin: 3px 0; }
+
+    /* ── Warranty timer ── */
+    #warranty-days { font-size: 13px; font-weight: 600; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div>
+      <div class="hero-title">🔧 MaxSense T3-Pro</div>
+      <div class="hero-model">Industrial Multi-Sensor Unit · MaxSense Industries s.r.o.</div>
+      <div class="hero-ids">
+        <div class="id-chip"><span class="k">S/N</span><span class="v">MST3-00847</span></div>
+        <div class="id-chip"><span class="k">HW</span><span class="v">rev 3.2</span></div>
+        <div class="id-chip"><span class="k">FW</span><span class="v">2.4.1</span></div>
+        <div class="id-chip"><span class="k">Batch</span><span class="v">B2026-01</span></div>
+        <div class="id-chip"><span class="k">Made</span><span class="v">2026-01-14</span></div>
+        <div class="id-chip"><span class="k">IP</span><span class="v">IP67</span></div>
+      </div>
+    </div>
+    <div class="hero-badges">
+      <span class="badge badge-polydoc">PolyDoc 1.2</span>
+      <span class="badge badge-signed">✓ Manufacturer signed</span>
+      <span class="badge badge-warrant" id="warranty-badge">🛡 Warranty 2031</span>
+    </div>
+  </div>
+
+  <!-- Signature bar -->
+  <div class="sig-bar">
+    <span class="sig-icon">🔏</span>
+    <div class="sig-main">
+      <strong>Signed by: MaxSense Industries — Device Signing CA</strong>
+      <span>Fingerprint: 4A:F2:9C:11:38:7D:E4:B2:0F:55:A1:C8:3E:76:D9:42 · SHA256-RSA</span>
+    </div>
+    <a class="sig-verify" href="https://verify.maxsense.io/passport/MST3-00847" target="_blank">
+      ↗ Verify online
+    </a>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="tab('identity')">📋 Identity</div>
+    <div class="tab" onclick="tab('hardware')">⚙ Hardware</div>
+    <div class="tab" onclick="tab('api')">🔌 API</div>
+    <div class="tab" onclick="tab('certs')">🏅 Certifications</div>
+    <div class="tab" onclick="tab('warranty')">🛡 Warranty</div>
+    <div class="tab" onclick="tab('changelog')">📝 Firmware</div>
+    <div class="tab" onclick="tab('ai')">🤖 For AI & Systems</div>
+  </div>
+
+  <!-- ── TAB: Identity ── -->
+  <div id="tab-identity" class="tab-content active">
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">📋 Device Identity</div>
+        <div class="card-body">
+          <table class="kv" id="kv-identity"></table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">📡 Communication</div>
+        <div class="card-body">
+          <table class="kv" id="kv-comms"></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: Hardware ── -->
+  <div id="tab-hardware" class="tab-content">
+    <div class="card">
+      <div class="card-header">🔬 Sensors</div>
+      <div class="card-body">
+        <div class="sensors" id="sensors-grid"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">💻 Platform</div>
+      <div class="card-body">
+        <table class="kv" id="kv-hw"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: API ── -->
+  <div id="tab-api" class="tab-content">
+    <div class="card">
+      <div class="card-header">🌐 HTTP Endpoints</div>
+      <div class="card-body" style="padding:0">
+        <table class="api-table" id="api-http-table">
+          <thead><tr><th>Method</th><th>Path</th><th>Description</th><th>Auth</th></tr></thead>
+          <tbody id="api-http-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">📨 MQTT Topics</div>
+      <div class="card-body" style="padding:0">
+        <table class="api-table">
+          <thead><tr><th>Topic</th><th>Direction</th><th>Interval</th><th>Description</th></tr></thead>
+          <tbody id="api-mqtt-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="ai-callout">
+      <h4>📦 PolyDoc API convention</h4>
+      This device speaks PolyDoc natively:
+      <ul>
+        <li><code>GET /config</code> → returns <code>type: device-config</code> PolyDoc — edit in browser, POST back</li>
+        <li><code>GET /log</code> → returns <code>type: iot-telemetry</code> PolyDoc — self-rendering dashboard</li>
+        <li><code>GET /passport</code> → returns this file — always current (reflects active firmware)</li>
+        <li>POST config accepts any browser or AI-generated PolyDoc — device verifies schema version before applying</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── TAB: Certifications ── -->
+  <div id="tab-certs" class="tab-content">
+    <div class="card">
+      <div class="card-header">🏅 Certifications & Compliance</div>
+      <div class="card-body">
+        <div class="certs" id="certs-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: Warranty ── -->
+  <div id="tab-warranty" class="tab-content">
+    <div class="warranty-card">
+      <div class="warranty-title">🛡 Manufacturer Warranty</div>
+      <div class="warranty-valid">Valid until: 2031-01-14</div>
+      <div class="warranty-sub" id="warranty-days"></div>
+      <table class="kv" id="kv-warranty"></table>
+    </div>
+    <div class="ai-callout">
+      <h4>🔏 Anti-counterfeit guarantee</h4>
+      This passport is signed by the manufacturer's Device Signing CA.
+      The signature covers the full <code>passport+json</code> block —
+      serial number, hardware revision, certifications, and warranty dates.
+      A forged or modified passport will fail signature verification at
+      <code>https://verify.maxsense.io/passport/MST3-00847</code>.
+      <br><br>
+      AI assistants and purchasing systems can verify authenticity programmatically —
+      no phone call, no paper certificate, no QR code app required.
+    </div>
+  </div>
+
+  <!-- ── TAB: Firmware ── -->
+  <div id="tab-changelog" class="tab-content">
+    <div class="card">
+      <div class="card-header">📝 Firmware Changelog</div>
+      <div class="card-body">
+        <div class="changelog" id="changelog-list"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:0">
+      <div class="card-header">⬆ Firmware Update</div>
+      <div class="card-body">
+        <table class="kv">
+          <tr><td>Current firmware</td><td>2.4.1</td></tr>
+          <tr><td>Update channel</td><td>https://firmware.maxsense.io/t3-pro/latest</td></tr>
+          <tr><td>OTA endpoint</td><td>POST /update (Bearer auth required)</td></tr>
+          <tr><td>Verification</td><td>Firmware images are signed — device rejects unsigned updates</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: AI & Systems ── -->
+  <div id="tab-ai" class="tab-content">
+    <div class="ai-callout" style="margin-bottom:14px">
+      <h4>🤖 For AI assistants</h4>
+      Parse <code>&lt;script type="application/polydoc+json"&gt;</code> for device identity,
+      API overview, and warranty. Parse <code>&lt;script type="application/passport+json"&gt;</code>
+      for complete structured data including full OpenAPI-style endpoint list, MQTT topics,
+      sensor specs, and certifications.
+      <ul>
+        <li>No scraping. No OCR. No vision model needed. It's just JSON.</li>
+        <li>Ask "what sensors does this device have?" → read <code>passport.hardware.sensors[]</code></li>
+        <li>Ask "how do I configure it?" → read <code>passport.api.endpoints[]</code>, find <code>POST /config</code></li>
+        <li>Ask "is the warranty valid?" → read <code>passport.warranty.valid_until</code>, compare to today</li>
+        <li>Ask "is this device genuine?" → verify <code>polydoc.security.signature</code> against CA</li>
+      </ul>
+    </div>
+    <div class="ai-callout" style="margin-bottom:14px">
+      <h4>🏭 For inventory & CMDB systems</h4>
+      <ul>
+        <li>Ingest <code>passport.identity</code> → create asset record (serial, model, HW rev, manufactured)</li>
+        <li>Ingest <code>passport.certifications[]</code> → track compliance expiry dates automatically</li>
+        <li>Ingest <code>passport.warranty</code> → alert before warranty expiry</li>
+        <li>Ingest <code>passport.api</code> → auto-provision monitoring (MQTT topics, HTTP health endpoint)</li>
+        <li>Ingest <code>polydoc.security</code> → verify authenticity before adding to inventory</li>
+      </ul>
+    </div>
+    <div class="ai-callout">
+      <h4>🔄 Lifecycle: one file, forever</h4>
+      The passport travels with the device. When firmware updates, the device serves
+      an updated passport from <code>GET /passport</code> — same serial, updated <code>firmware</code>
+      field and changelog entry. Purchasing, maintenance, and end-of-life teams all
+      work from the same file. No portal login, no account, no app.
+      <br><br>
+      <strong>The file IS the device documentation.</strong>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const d = JSON.parse(document.getElementById('passport-data').textContent);
+
+// ── Identity tab ───────────────────────────────────────────────────────────
+function kv(tableId, rows) {
+  document.getElementById(tableId).innerHTML = rows.map(([k,v]) =>
+    `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+}
+kv('kv-identity', [
+  ['Serial number', d.identity.serial],
+  ['Model',         d.identity.model],
+  ['Manufacturer',  d.identity.manufacturer],
+  ['Country',       d.identity.country],
+  ['Manufactured',  d.identity.manufactured],
+  ['Batch',         d.identity.batch],
+  ['Hardware rev',  d.identity.hardware_rev],
+  ['Firmware',      d.identity.firmware],
+]);
+kv('kv-comms', [
+  ['Protocols',       d.hardware.connectivity.join(', ')],
+  ['HTTP port',       d.api.http_port],
+  ['MQTT prefix',     d.api.mqtt_topic_prefix],
+  ['Power',           d.hardware.power],
+  ['IP rating',       d.hardware.ip_rating],
+  ['Operating temp',  d.hardware.operating_temp],
+  ['Dimensions',      d.hardware.dimensions_mm + ' mm'],
+  ['Weight',          d.hardware.weight_g + ' g'],
+]);
+
+// ── Hardware tab ───────────────────────────────────────────────────────────
+document.getElementById('sensors-grid').innerHTML = d.hardware.sensors.map(s => `
+  <div class="sensor-card">
+    <div class="sensor-name">${s.name.replace('_',' ')}</div>
+    <div class="sensor-meta">
+      Range: ${s.range}<br>
+      Accuracy: ${s.accuracy}
+    </div>
+    <div class="sensor-output">→ ${s.output}</div>
+  </div>`).join('');
+
+kv('kv-hw', [
+  ['CPU',   d.hardware.cpu],
+  ['Flash', d.hardware.flash],
+  ['RAM',   d.hardware.ram],
+]);
+
+// ── API tab ────────────────────────────────────────────────────────────────
+document.getElementById('api-http-body').innerHTML = d.api.endpoints.map(e => `
+  <tr>
+    <td><span class="method ${e.method}">${e.method}</span></td>
+    <td><span class="path">${e.path}</span></td>
+    <td style="color:var(--text2)">${e.desc}</td>
+    <td><span class="auth-badge auth-${e.auth}">${e.auth}</span></td>
+  </tr>`).join('');
+
+document.getElementById('api-mqtt-body').innerHTML = d.api.mqtt_topics.map(t => `
+  <tr>
+    <td style="font-family:monospace;font-size:11px;color:var(--accent2)">${t.topic}</td>
+    <td style="color:var(--text2)">${t.direction}</td>
+    <td style="color:var(--text2)">${t.interval||'—'}</td>
+    <td style="color:var(--text2)">${t.desc||t.format||'—'}</td>
+  </tr>`).join('');
+
+// ── Certifications ─────────────────────────────────────────────────────────
+const certIcons = { CE:'🇪🇺', RoHS:'♻', IP67:'💧', ATEX:'🔥' };
+document.getElementById('certs-grid').innerHTML = d.certifications.map(c => `
+  <div class="cert">
+    <span class="cert-icon">${certIcons[c.name]||'🏅'}</span>
+    <div>
+      <div class="cert-name">${c.name}</div>
+      <div class="cert-num">${c.number}</div>
+      <div class="cert-exp">Issued: ${c.issued}${c.valid_until ? ' · Valid until: '+c.valid_until : ' · No expiry'}</div>
+    </div>
+  </div>`).join('');
+
+// ── Warranty ───────────────────────────────────────────────────────────────
+const warrantyDate = new Date(d.warranty.valid_until);
+const today = new Date();
+const daysLeft = Math.ceil((warrantyDate - today) / 86400000);
+document.getElementById('warranty-days').textContent =
+  daysLeft > 0 ? `${daysLeft} days remaining` : 'EXPIRED';
+kv('kv-warranty', [
+  ['Valid until',  d.warranty.valid_until + ` (${daysLeft} days)`],
+  ['Coverage',     d.warranty.coverage],
+  ['Exclusions',   d.warranty.exclusions],
+  ['Service',      d.warranty.service_email],
+  ['RMA',          d.warranty.rma_url],
+]);
+
+// ── Changelog ──────────────────────────────────────────────────────────────
+document.getElementById('changelog-list').innerHTML = d.changelog.map((c, i) => {
+  const [type, text] = c.note.split(': ');
+  return `<div class="cl-item">
+    <span class="cl-ver">${c.version}</span>
+    <span class="cl-date">${c.date}</span>
+    <span class="cl-note"><strong>${type}:</strong> ${text||c.note}</span>
+  </div>`;
+}).join('');
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function tab(id) {
+  const ids = ['identity','hardware','api','certs','warranty','changelog','ai'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ids[i]===id));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+}
+</script>
+</body>
+</html>
