@@ -347,7 +347,7 @@ parties, and amounts — while large data is stored compactly alongside them in 
     "format": "poly/1.0",
     "doc_id": "INV-2026-001",
     "compression": {
-      "algorithm": "deflate",
+      "algorithm": "deflate-raw",
       "threshold": 10240
     }
   }
@@ -397,16 +397,25 @@ An uncompressed section looks normal — the `compressed` field is absent or `fa
 
 | Rule | Value |
 |------|-------|
-| Algorithm | DEFLATE (RFC 1951) |
+| Algorithm | **deflate-raw** (RFC 1951, raw DEFLATE — no zlib wrapper) |
 | Encoding | Base64 |
 | Default threshold | 10 240 B |
 | Flag | `"compressed": true` on the section/item |
-| Content | `"data": base64(deflate(JSON.stringify(original_data)))` |
+| Content | `"data": base64(deflateRaw(JSON.stringify(original_data)))` |
 | Metadata | `"original_size"`, `"compressed_size"` (optional, for debugging) |
 | Never compressed | `header`, `metadata`, summaries, table `footer` |
 
-Decompress (Node.js): `JSON.parse(inflateSync(Buffer.from(data, 'base64')).toString('utf-8'))`
-Decompress (browser): `DecompressionStream('deflate')` + `TextDecoder`
+> **Why deflate-raw and not deflate?**
+> `deflate` (zlib format, RFC 1950) adds a 2-byte header and 4-byte checksum wrapper.
+> Browser `DecompressionStream('deflate')` behaviour is inconsistent across engines —
+> some expect the zlib wrapper, others don't. `deflate-raw` (RFC 1951) has no wrapper,
+> is universally supported, and maps directly to `DecompressionStream('deflate-raw')`
+> which is stable in all modern browsers and in MicroPython/embedded runtimes.
+
+Decompress (Node.js):  `JSON.parse(inflateRawSync(Buffer.from(data, 'base64')).toString('utf-8'))`
+Decompress (browser):  `DecompressionStream('deflate-raw')` + `TextDecoder`
+Decompress (Python):   `zlib.decompress(base64.b64decode(data), -15)` (`wbits=-15` = raw DEFLATE)
+Decompress (MicroPython): `zlib.decompress(base64.b64decode(data), -15)`
 
 ---
 
@@ -574,7 +583,49 @@ with a link to the full version. JS is not available — the full version handle
 
 ---
 
-## 14. Roadmap
+## 14. Render server — `POST /render`
+
+The PolyDoc render server exposes a single endpoint that serves a dual purpose.
+
+### Primary role: direct-to-user display channel
+
+`POST /render` is not a pipeline step that generates a file and redirects.
+It is the channel through which a **human sees the document** — the server responds
+with rendered HTML directly, the browser displays it immediately.
+
+This is intentional: PolyDoc documents are designed to travel as data and be rendered
+at the point of consumption. The render server is that point.
+
+```
+Browser / proxy                Render server
+──────────────────             ─────────────────────────────────────
+POST /render                →  validate PolyDoc JSON
+Accept: text/html              render full interactive HTML
+                            ←  200 OK  Content-Type: text/html
+                               (user sees document immediately)
+```
+
+### Modes
+
+| `?mode=` | Response | Use case |
+|----------|----------|----------|
+| `display` | `text/html` — full interactive render | **Default for browsers** (Accept: text/html) |
+| `mail` | `text/html` — static, JS-free render | Email preview, print |
+| `api` | `application/json` — `{ html_url, mail_html }`, saves to disk | **Default for API clients**, CI/CD pipelines |
+
+Mode is selected by `?mode=` query param. If omitted, the server sniffs the `Accept` header:
+browsers send `text/html` → `display` mode; API clients send `application/json` → `api` mode.
+
+### Why this matters
+
+A PolyDoc can be forwarded from one system to another and rendered at the final hop
+without any extra negotiation. A mail gateway, a webhook handler, or an IoT device
+can POST a received PolyDoc directly to `/render?mode=display` and the user gets a
+fully interactive view — no storage, no redirect, no second request.
+
+---
+
+## 15. Roadmap
 
 ### v1.0 (current)
 - [x] JSON schema (header, metadata, content, visuals, logic)
@@ -615,7 +666,7 @@ These are additive extensions. Documents without these fields behave exactly as 
 
 ---
 
-## 15. GitHub & spec reference
+## 18. GitHub & spec reference
 
 ```json
 {

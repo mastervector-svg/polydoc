@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { deflateSync, inflateSync } from 'zlib';
+import { deflateRawSync, inflateRawSync } from 'zlib';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_DIR = join(__dirname, '..', 'templates');
@@ -223,7 +223,7 @@ const COMPRESS_THRESHOLD = 10 * 1024; // 10 KB
 export function compressPayload(json) {
   const raw = JSON.stringify(json);
   const original_size = Buffer.byteLength(raw, 'utf-8');
-  const buf = deflateSync(Buffer.from(raw, 'utf-8'));
+  const buf = deflateRawSync(Buffer.from(raw, 'utf-8'));
   const data = buf.toString('base64');
   return { compressed: true, data, original_size, compressed_size: buf.length };
 }
@@ -232,7 +232,7 @@ export function compressPayload(json) {
  * Decompress a base64 DEFLATE string back to a JSON object.
  */
 export function decompressPayload(base64str) {
-  const buf = inflateSync(Buffer.from(base64str, 'base64'));
+  const buf = inflateRawSync(Buffer.from(base64str, 'base64'));
   return JSON.parse(buf.toString('utf-8'));
 }
 
