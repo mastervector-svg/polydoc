@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Config · PolyDoc Interactive Config</title>
+
+  <!-- ─────────────────────────────────────────────────────
+       POLYDOC METADATA
+       Machine-readable descriptor — AI agents and tooling
+       can extract this without rendering the HTML.
+  ──────────────────────────────────────────────────────── -->
+  <script type="application/polydoc+json">
+  {
+    "polydoc": "1.2",
+    "type": "interactive-config",
+    "title": "App Config",
+    "description": "Self-contained interactive admin panel. Edit config, download updated file. No backend, no build step.",
+    "schema_version": "1"
+  }
+  </script>
+
+  <!-- ─────────────────────────────────────────────────────
+       THE ACTUAL CONFIG DATA
+       This is what you would normally put in config.json.
+       The script below reads this, renders a UI from it,
+       and on save rewrites this block inside the HTML.
+  ──────────────────────────────────────────────────────── -->
+  <script type="application/config+json" id="config-data">
+  {
+    "app": {
+      "name": "My App",
+      "version": "1.0.0",
+      "debug": false,
+      "log_level": "info"
+    },
+    "server": {
+      "host": "0.0.0.0",
+      "port": 3000,
+      "cors_enabled": true,
+      "cors_origins": "https://myapp.com, https://staging.myapp.com"
+    },
+    "database": {
+      "host": "db.internal",
+      "port": 5432,
+      "name": "myapp_prod",
+      "pool_size": 10,
+      "ssl": true
+    },
+    "features": {
+      "new_dashboard": false,
+      "beta_api": false,
+      "maintenance_mode": false
+    },
+    "notifications": {
+      "email_enabled": true,
+      "smtp_host": "smtp.example.com",
+      "smtp_port": 587,
+      "from_address": "noreply@example.com"
+    }
+  }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --surface2: #21262d;
+      --border:   #30363d;
+      --accent:   #58a6ff;
+      --accent2:  #3fb950;
+      --text:     #e6edf3;
+      --text2:    #8b949e;
+      --ok:       #3fb950;
+      --warn:     #d29922;
+      --err:      #f85149;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: 32px 16px 80px;
+    }
+
+    .container { max-width: 780px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 24px;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-icon { font-size: 28px; }
+    .header h1 { font-size: 20px; font-weight: 700; }
+    .header .subtitle { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .polydoc-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+      background: rgba(88,166,255,.12); color: var(--accent);
+      border: 1px solid rgba(88,166,255,.25);
+      border-radius: 5px; padding: 3px 8px;
+    }
+
+    /* Section */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .section-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+      cursor: pointer; user-select: none;
+    }
+    .section-header:hover { background: var(--surface2); }
+    .section-title { font-size: 13px; font-weight: 600; flex: 1; }
+    .section-key { font-size: 11px; color: var(--text2); font-family: monospace; }
+    .section-arrow { color: var(--text2); font-size: 12px; transition: transform .15s; }
+    .section.collapsed .section-arrow { transform: rotate(-90deg); }
+    .section-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+    .section.collapsed .section-body { display: none; }
+
+    /* Field row */
+    .field { display: grid; grid-template-columns: 200px 1fr; align-items: start; gap: 12px; }
+    .field-label { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; }
+    .field-key { font-family: monospace; font-size: 12px; color: var(--accent); }
+    .field-type { font-size: 10px; color: var(--text2); }
+
+    /* Inputs */
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      padding: 6px 10px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus {
+      border-color: var(--accent);
+    }
+    select option { background: var(--surface2); }
+
+    /* Toggle */
+    .toggle-wrap { display: flex; align-items: center; gap: 10px; height: 32px; }
+    .toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 22px; cursor: pointer; transition: .2s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      height: 14px; width: 14px; left: 3px; bottom: 3px;
+      background: var(--text2); border-radius: 50%; transition: .2s;
+    }
+    input:checked + .toggle-slider { background: var(--ok); border-color: var(--ok); }
+    input:checked + .toggle-slider::before { transform: translateX(16px); background: #fff; }
+    .toggle-val { font-size: 12px; color: var(--text2); min-width: 36px; }
+
+    /* Footer toolbar */
+    .toolbar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex; align-items: center; gap: 12px;
+      justify-content: flex-end;
+      backdrop-filter: blur(8px);
+      z-index: 50;
+    }
+    .toolbar-hint { font-size: 12px; color: var(--text2); margin-right: auto; }
+    .changed-dot {
+      display: inline-block; width: 7px; height: 7px;
+      border-radius: 50%; background: var(--warn); margin-right: 4px;
+      vertical-align: middle; opacity: 0;
+      transition: opacity .2s;
+    }
+    .changed-dot.visible { opacity: 1; }
+    .btn {
+      padding: 8px 18px; border-radius: 7px; font-size: 13px;
+      font-weight: 600; cursor: pointer; border: none; transition: .15s;
+    }
+    .btn-secondary {
+      background: var(--surface2); color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-primary { background: var(--accent); color: #0d1117; }
+    .btn-primary:hover { opacity: 0.88; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 72px; right: 24px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 16px; font-size: 13px;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity .2s, transform .2s;
+      pointer-events: none; z-index: 60;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.ok { border-color: var(--ok); color: var(--ok); }
+
+    /* AI block */
+    .ai-block {
+      background: rgba(88,166,255,.05);
+      border: 1px solid rgba(88,166,255,.2);
+      border-radius: 8px; padding: 12px 16px;
+      font-size: 12px; color: var(--text2);
+      margin-top: 8px;
+    }
+    .ai-block strong { color: var(--accent); }
+
+    @media (max-width: 600px) {
+      .field { grid-template-columns: 1fr; }
+      .field-label { padding-top: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">⚙</div>
+      <div>
+        <h1 id="app-title">App Config</h1>
+        <div class="subtitle">Edit settings below · download updated file to deploy</div>
+      </div>
+    </div>
+    <span class="polydoc-badge">PolyDoc 1.2</span>
+  </div>
+
+  <div id="config-ui"></div>
+
+  <div class="ai-block">
+    <strong>For AI agents:</strong> The config data is in
+    <code>&lt;script type="application/config+json" id="config-data"&gt;</code>.
+    Parse it directly — no scraping needed. To update: read current values,
+    apply changes, serialize back to JSON, replace the script block content.
+  </div>
+
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <span class="toolbar-hint">
+    <span class="changed-dot" id="changed-dot"></span>
+    <span id="toolbar-status">No changes</span>
+  </span>
+  <button class="btn btn-secondary" onclick="resetChanges()">Reset</button>
+  <button class="btn btn-secondary" onclick="copyJson()">Copy JSON</button>
+  <button class="btn btn-primary" onclick="saveFile()">⬇ Download updated file</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Read config ───────────────────────────────────────────────────────────
+const configEl  = document.getElementById('config-data');
+let   original  = JSON.parse(configEl.textContent);
+let   current   = JSON.parse(JSON.stringify(original)); // deep copy
+
+// ─── Render UI ─────────────────────────────────────────────────────────────
+const SECTION_ICONS = {
+  app: '📦', server: '🌐', database: '🗄', features: '🚀', notifications: '✉'
+};
+
+function renderUI(data) {
+  const root = document.getElementById('config-ui');
+  root.innerHTML = '';
+
+  // Update title from config
+  if (data.app?.name) document.getElementById('app-title').textContent = data.app.name + ' — Config';
+
+  for (const [sectionKey, sectionVal] of Object.entries(data)) {
+    if (typeof sectionVal !== 'object' || sectionVal === null) continue;
+
+    const sec = document.createElement('div');
+    sec.className = 'section';
+    sec.innerHTML = `
+      <div class="section-header" onclick="toggleSection(this)">
+        <span>${SECTION_ICONS[sectionKey] || '⚙'}</span>
+        <span class="section-title">${sectionKey.charAt(0).toUpperCase() + sectionKey.slice(1).replace(/_/g,' ')}</span>
+        <span class="section-key">${sectionKey}</span>
+        <span class="section-arrow">▾</span>
+      </div>
+      <div class="section-body" id="section-${sectionKey}"></div>
+    `;
+    root.appendChild(sec);
+
+    const body = sec.querySelector('.section-body');
+    for (const [fieldKey, fieldVal] of Object.entries(sectionVal)) {
+      body.appendChild(renderField(sectionKey, fieldKey, fieldVal));
+    }
+  }
+}
+
+function renderField(sec, key, val) {
+  const type = typeof val;
+  const row = document.createElement('div');
+  row.className = 'field';
+
+  const labelHtml = `
+    <div class="field-label">
+      <span class="field-key">${key}</span>
+      <span class="field-type">${type}${type === 'number' ? '' : ''}</span>
+    </div>`;
+
+  let inputHtml;
+  const path = `${sec}.${key}`;
+
+  if (type === 'boolean') {
+    inputHtml = `
+      <div class="toggle-wrap">
+        <label class="toggle">
+          <input type="checkbox" data-path="${path}" ${val ? 'checked' : ''}
+            onchange="onFieldChange('${path}', this.checked, 'boolean')">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-val" id="tv-${path.replace('.','_')}">${val ? 'true' : 'false'}</span>
+      </div>`;
+  } else if (type === 'number') {
+    inputHtml = `<input type="number" data-path="${path}" value="${val}"
+      oninput="onFieldChange('${path}', +this.value, 'number')">`;
+  } else {
+    // log_level dropdown
+    if (key === 'log_level') {
+      const opts = ['debug','info','warn','error'].map(o =>
+        `<option value="${o}"${o===val?' selected':''}>${o}</option>`).join('');
+      inputHtml = `<select data-path="${path}" onchange="onFieldChange('${path}', this.value, 'string')">${opts}</select>`;
+    } else {
+      inputHtml = `<input type="text" data-path="${path}" value="${escHtml(String(val))}"
+        oninput="onFieldChange('${path}', this.value, 'string')">`;
+    }
+  }
+
+  row.innerHTML = labelHtml + `<div>${inputHtml}</div>`;
+  return row;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+// ─── Change tracking ───────────────────────────────────────────────────────
+let changeCount = 0;
+
+function onFieldChange(path, value, type) {
+  const [sec, key] = path.split('.');
+  current[sec][key] = value;
+
+  // Update boolean label
+  if (type === 'boolean') {
+    const lbl = document.getElementById('tv-' + path.replace('.','_'));
+    if (lbl) lbl.textContent = value ? 'true' : 'false';
+  }
+
+  countChanges();
+}
+
+function countChanges() {
+  changeCount = 0;
+  for (const sec of Object.keys(current)) {
+    for (const key of Object.keys(current[sec])) {
+      if (current[sec][key] !== original[sec]?.[key]) changeCount++;
+    }
+  }
+  const dot = document.getElementById('changed-dot');
+  const status = document.getElementById('toolbar-status');
+  if (changeCount > 0) {
+    dot.classList.add('visible');
+    status.textContent = `${changeCount} unsaved change${changeCount>1?'s':''}`;
+  } else {
+    dot.classList.remove('visible');
+    status.textContent = 'No changes';
+  }
+}
+
+// ─── Actions ───────────────────────────────────────────────────────────────
+function toggleSection(header) {
+  header.closest('.section').classList.toggle('collapsed');
+}
+
+function resetChanges() {
+  current = JSON.parse(JSON.stringify(original));
+  renderUI(current);
+  countChanges();
+  toast('Reset to saved values', 'ok');
+}
+
+function copyJson() {
+  navigator.clipboard.writeText(JSON.stringify(current, null, 2))
+    .then(() => toast('JSON copied to clipboard', 'ok'))
+    .catch(() => toast('Copy failed — try manually', ''));
+}
+
+/**
+ * saveFile() — The PolyDoc magic.
+ *
+ * Rewrites the <script type="application/config+json"> block inside this
+ * very HTML file and offers the result as a download. The downloaded file
+ * IS this file — with updated config baked in. No server needed.
+ */
+function saveFile() {
+  const newJson = JSON.stringify(current, null, 2);
+
+  // Get the full HTML source of THIS document
+  const html = document.documentElement.outerHTML;
+
+  // Replace the config block content with updated JSON
+  const updated = html.replace(
+    /(<script type="application\/config\+json"[^>]*>)([\s\S]*?)(<\/script>)/,
+    (_, open, _old, close) => open + '\n  ' + newJson.split('\n').join('\n  ') + '\n  ' + close
+  );
+
+  // Trigger download
+  const blob = new Blob(['<!DOCTYPE html>\n' + updated], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), {
+    href: url,
+    download: 'config.html'
+  });
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // Mark as saved
+  original = JSON.parse(JSON.stringify(current));
+  countChanges();
+  toast('Downloaded updated config.html ✓', 'ok');
+}
+
+// ─── Toast ─────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ─── Init ──────────────────────────────────────────────────────────────────
+renderUI(current);
+</script>
+</body>
+</html>
