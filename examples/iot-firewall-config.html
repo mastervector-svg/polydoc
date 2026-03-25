@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firewall Config · GW-OFFICE-01 — PolyDoc IoT</title>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       POLYDOC DESCRIPTOR
+       Machine-readable. AI agents parse this block directly.
+       Devices check: schema_version, device_id, firmware_min before apply.
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <script type="application/polydoc+json">
+  {
+    "polydoc": "1.2",
+    "type": "iot-device-config",
+    "title": "Firewall Config — GW-OFFICE-01",
+    "description": "Network gateway configuration. Contains interface setup, firewall rules, DHCP and DNS settings. Edit in browser, apply via POST /config or upload to device.",
+    "device": {
+      "id": "GW-OFFICE-01",
+      "model": "OpenWRT Gateway",
+      "firmware_min": "23.05",
+      "firmware_max": null,
+      "location": "Office / Rack A"
+    },
+    "schema_version": "2",
+    "schema_changelog": {
+      "1": "Initial — interfaces + basic firewall",
+      "2": "Added DNS-over-HTTPS, per-rule logging, VLAN tags"
+    },
+    "security": {
+      "signed": true,
+      "signature_algo": "SHA256",
+      "signature_covers": "config+json block content",
+      "signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encrypted": false,
+      "note": "Set encrypted:true + encrypt config+json block with AES-256-GCM, key=HMAC(device_secret, device_id) for zero-trust deployment"
+    },
+    "audit": {
+      "created_at": "2026-03-01T10:00:00Z",
+      "created_by": "vector",
+      "applied_at": null,
+      "applied_by": null,
+      "previous_hash": null,
+      "comment": "Initial configuration"
+    },
+    "apply": {
+      "endpoint": "http://192.168.1.1/config",
+      "method": "POST",
+      "content_type": "text/html",
+      "auth": "Bearer",
+      "restart_required": ["firewall", "network", "dnsmasq"]
+    }
+  }
+  </script>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       DEVICE CONFIGURATION
+       This IS the config. The device reads exactly this block.
+       Human edits it via the UI below. AI agents parse/modify it directly.
+       Schema v2 — see polydoc+json.schema_changelog for history.
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <script type="application/config+json" id="config-data">
+  {
+    "interfaces": {
+      "wan": {
+        "proto": "dhcp",
+        "mtu": 1500,
+        "metric": 10
+      },
+      "lan": {
+        "proto": "static",
+        "ipaddr": "192.168.1.1",
+        "netmask": "255.255.255.0",
+        "ip6assign": 60
+      },
+      "guest": {
+        "proto": "static",
+        "ipaddr": "192.168.10.1",
+        "netmask": "255.255.255.0",
+        "vlan_tag": 10,
+        "isolate": true
+      }
+    },
+    "firewall": {
+      "default_input": "ACCEPT",
+      "default_forward": "REJECT",
+      "default_output": "ACCEPT",
+      "syn_flood_protect": true,
+      "rules": [
+        { "id": "r1", "enabled": true,  "name": "Allow SSH from LAN",     "src": "lan",  "dest": "",    "proto": "tcp", "dest_port": "22",  "action": "ACCEPT", "log": false },
+        { "id": "r2", "enabled": true,  "name": "Allow HTTP/S from LAN",  "src": "lan",  "dest": "wan", "proto": "tcp", "dest_port": "80,443", "action": "ACCEPT", "log": false },
+        { "id": "r3", "enabled": true,  "name": "Block Telnet",           "src": "*",    "dest": "",    "proto": "tcp", "dest_port": "23",  "action": "DROP",   "log": true  },
+        { "id": "r4", "enabled": false, "name": "Allow VPN (WireGuard)",  "src": "wan",  "dest": "",    "proto": "udp", "dest_port": "51820","action": "ACCEPT", "log": false },
+        { "id": "r5", "enabled": true,  "name": "Isolate Guest VLAN",     "src": "guest","dest": "lan", "proto": "*",   "dest_port": "*",   "action": "DROP",   "log": true  }
+      ]
+    },
+    "dhcp": {
+      "lan": {
+        "enabled": true,
+        "start": 100,
+        "limit": 150,
+        "leasetime": "12h",
+        "dns_override": ""
+      },
+      "guest": {
+        "enabled": true,
+        "start": 10,
+        "limit": 50,
+        "leasetime": "2h",
+        "dns_override": "1.1.1.3"
+      }
+    },
+    "dns": {
+      "domain": "office.local",
+      "upstream": ["1.1.1.1", "8.8.8.8"],
+      "doh_enabled": true,
+      "doh_provider": "https://cloudflare-dns.com/dns-query",
+      "rebind_protection": true,
+      "local_ttl": 300
+    }
+  }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --surface2: #21262d;
+      --border:   #30363d;
+      --accent:   #58a6ff;
+      --accent2:  #3fb950;
+      --text:     #e6edf3;
+      --text2:    #8b949e;
+      --ok:       #3fb950;
+      --warn:     #d29922;
+      --err:      #f85149;
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 14px; line-height: 1.5;
+      min-height: 100vh; padding: 28px 16px 90px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+
+    /* ── Header ── */
+    .header {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 18px 22px; margin-bottom: 20px;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .header-icon { font-size: 30px; }
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .header-meta { font-size: 11px; color: var(--text2); margin-top: 3px; display: flex; gap: 14px; flex-wrap: wrap; }
+    .header-meta span { display: flex; align-items: center; gap: 4px; }
+    .header-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .badge {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.4px;
+      border-radius: 5px; padding: 3px 8px; white-space: nowrap;
+    }
+    .badge-polydoc { background: rgba(88,166,255,.12); color: var(--accent); border: 1px solid rgba(88,166,255,.25); }
+    .badge-signed  { background: rgba(63,185,80,.12);  color: var(--ok);    border: 1px solid rgba(63,185,80,.25); }
+    .badge-schema  { background: rgba(210,153,34,.10); color: var(--warn);  border: 1px solid rgba(210,153,34,.25); }
+
+    /* ── Compat check bar ── */
+    .compat-bar {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 16px; margin-bottom: 16px;
+      font-size: 12px; color: var(--text2);
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .compat-bar.ok    { border-color: var(--ok);   }
+    .compat-bar.err   { border-color: var(--err);  }
+    .compat-bar.warn  { border-color: var(--warn); }
+    .compat-icon { font-size: 16px; }
+    .compat-text strong { color: var(--text); }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 2px; margin-bottom: 16px; flex-wrap: wrap; }
+    .tab {
+      padding: 8px 16px; border-radius: 7px; cursor: pointer;
+      font-size: 13px; font-weight: 500; color: var(--text2);
+      background: var(--surface); border: 1px solid var(--border);
+      transition: .15s; user-select: none;
+    }
+    .tab:hover { color: var(--text); border-color: var(--accent); }
+    .tab.active { background: rgba(88,166,255,.12); color: var(--accent); border-color: rgba(88,166,255,.4); font-weight: 600; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 14px; overflow: hidden;
+    }
+    .card-header {
+      padding: 13px 18px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .card-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .card-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Form grid ── */
+    .field { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 10px; }
+    .field-label { font-size: 12px; color: var(--text2); }
+    .field-key { font-family: monospace; font-size: 11px; color: var(--accent); display: block; }
+    input[type="text"], input[type="number"], select {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 13px;
+      padding: 6px 10px; outline: none; transition: border-color .15s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    select option { background: var(--surface2); }
+
+    /* ── Toggle ── */
+    .toggle-row { display: flex; align-items: center; gap: 10px; }
+    .toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider {
+      position: absolute; inset: 0; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 22px; cursor: pointer; transition: .2s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute; height: 14px; width: 14px;
+      left: 3px; bottom: 3px; background: var(--text2); border-radius: 50%; transition: .2s;
+    }
+    input:checked + .toggle-slider { background: var(--ok); border-color: var(--ok); }
+    input:checked + .toggle-slider::before { transform: translateX(16px); background: #fff; }
+
+    /* ── Firewall rules table ── */
+    .rules-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .rules-table th {
+      background: var(--surface2); text-align: left; padding: 8px 10px;
+      font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text2);
+    }
+    .rules-table td { padding: 8px 10px; border-top: 1px solid var(--border); vertical-align: middle; }
+    .rules-table tr:hover td { background: rgba(255,255,255,.02); }
+    .rules-table td input[type="text"] { padding: 4px 7px; font-size: 12px; }
+    .rules-table select { padding: 4px 7px; font-size: 12px; }
+    .action-badge {
+      display: inline-block; padding: 2px 7px; border-radius: 4px;
+      font-size: 10px; font-weight: 700;
+    }
+    .action-ACCEPT { background: rgba(63,185,80,.15); color: var(--ok); }
+    .action-DROP   { background: rgba(248,81,73,.15);  color: var(--err); }
+    .action-REJECT { background: rgba(210,153,34,.15); color: var(--warn); }
+    .btn-icon {
+      background: none; border: 1px solid var(--border); color: var(--text2);
+      border-radius: 5px; padding: 3px 7px; cursor: pointer; font-size: 12px;
+      transition: .15s;
+    }
+    .btn-icon:hover { border-color: var(--err); color: var(--err); }
+    .btn-add {
+      background: none; border: 1px dashed var(--border); color: var(--text2);
+      border-radius: 7px; padding: 8px 14px; cursor: pointer; font-size: 12px;
+      width: 100%; text-align: center; margin-top: 10px; transition: .15s;
+    }
+    .btn-add:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Default policy pills ── */
+    .policy-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+    .policy-item { flex: 1; min-width: 140px; }
+    .policy-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+
+    /* ── Docs callout ── */
+    .doc-callout {
+      background: rgba(88,166,255,.05); border: 1px solid rgba(88,166,255,.18);
+      border-radius: 8px; padding: 12px 16px; font-size: 12px; color: var(--text2);
+      line-height: 1.6;
+    }
+    .doc-callout strong { color: var(--accent); }
+    .doc-callout code {
+      background: var(--surface2); border-radius: 4px; padding: 1px 5px;
+      font-family: monospace; font-size: 11px; color: var(--accent2);
+    }
+    .doc-callout h4 { color: var(--text); font-size: 12px; margin-bottom: 6px; }
+    .doc-callout ul { margin-left: 18px; margin-top: 6px; }
+    .doc-callout li { margin: 3px 0; }
+
+    /* ── Security panel ── */
+    .sig-box {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 7px; padding: 12px 14px; font-size: 12px;
+    }
+    .sig-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+    .sig-key { color: var(--text2); font-family: monospace; font-size: 11px; }
+    .sig-val { color: var(--text); font-family: monospace; font-size: 11px; word-break: break-all; max-width: 420px; text-align: right; }
+    .sig-ok   { color: var(--ok); }
+    .sig-warn { color: var(--warn); }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface); border-top: 1px solid var(--border);
+      padding: 12px 24px; display: flex; align-items: center; gap: 10px;
+      backdrop-filter: blur(8px); z-index: 50;
+    }
+    .toolbar-status { font-size: 12px; color: var(--text2); margin-right: auto; display: flex; align-items: center; gap: 6px; }
+    .changed-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); opacity: 0; transition: opacity .2s; flex-shrink: 0; }
+    .changed-dot.on { opacity: 1; }
+    .btn { padding: 8px 18px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: .15s; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-apply  { background: var(--ok);   color: #0d1117; }
+    .btn-apply:hover  { opacity: .88; }
+    .btn-download { background: var(--accent); color: #0d1117; }
+    .btn-download:hover { opacity: .88; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 72px; right: 24px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 16px; font-size: 13px;
+      opacity: 0; transform: translateY(8px); transition: .2s;
+      pointer-events: none; z-index: 60; max-width: 340px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.ok   { border-color: var(--ok);   color: var(--ok); }
+    .toast.err  { border-color: var(--err);  color: var(--err); }
+    .toast.warn { border-color: var(--warn); color: var(--warn); }
+
+    @media (max-width: 600px) {
+      .field { grid-template-columns: 1fr; }
+      .header-badges { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">🛡</div>
+      <div>
+        <h1>GW-OFFICE-01 — Firewall Config</h1>
+        <div class="header-meta">
+          <span>📍 Office / Rack A</span>
+          <span>🔧 OpenWRT Gateway</span>
+          <span id="meta-firmware">⚡ firmware ≥ 23.05</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="badge badge-polydoc">PolyDoc 1.2</span>
+      <span class="badge badge-signed" id="sig-badge">✓ Signed</span>
+      <span class="badge badge-schema">Schema v2</span>
+    </div>
+  </div>
+
+  <!-- Compatibility check -->
+  <div class="compat-bar" id="compat-bar">
+    <span class="compat-icon">⏳</span>
+    <span class="compat-text">Checking compatibility…</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('network')">🌐 Network</div>
+    <div class="tab" onclick="switchTab('firewall')">🔥 Firewall</div>
+    <div class="tab" onclick="switchTab('dhcp')">📡 DHCP</div>
+    <div class="tab" onclick="switchTab('dns')">🔍 DNS</div>
+    <div class="tab" onclick="switchTab('security')">🔐 Security</div>
+    <div class="tab" onclick="switchTab('docs')">📖 Docs</div>
+  </div>
+
+  <!-- ── TAB: Network ── -->
+  <div id="tab-network" class="tab-content active">
+    <div id="iface-cards"></div>
+  </div>
+
+  <!-- ── TAB: Firewall ── -->
+  <div id="tab-firewall" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">⚙ Default Policies</span>
+      </div>
+      <div class="card-body">
+        <div class="policy-grid" id="policy-grid"></div>
+        <div class="field" style="margin-top:4px">
+          <span class="field-label"><span class="field-key">syn_flood_protect</span>SYN flood protection</span>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="fw-synflood" onchange="markChanged()">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📋 Rules <span id="rules-count" style="font-weight:400;color:var(--text2);font-size:12px"></span></span>
+      </div>
+      <div class="card-body" style="padding:0">
+        <table class="rules-table" id="rules-table">
+          <thead>
+            <tr>
+              <th style="width:36px">On</th>
+              <th>Name</th>
+              <th>Src</th>
+              <th>Dest</th>
+              <th>Proto</th>
+              <th>Port</th>
+              <th>Action</th>
+              <th>Log</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="rules-body"></tbody>
+        </table>
+        <button class="btn-add" onclick="addRule()">+ Add rule</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: DHCP ── -->
+  <div id="tab-dhcp" class="tab-content">
+    <div id="dhcp-cards"></div>
+  </div>
+
+  <!-- ── TAB: DNS ── -->
+  <div id="tab-dns" class="tab-content">
+    <div class="card">
+      <div class="card-header"><span class="card-title">🔍 DNS Settings</span></div>
+      <div class="card-body" id="dns-body"></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: Security ── -->
+  <div id="tab-security" class="tab-content">
+    <div class="card">
+      <div class="card-header"><span class="card-title">🔐 Signature & Integrity</span></div>
+      <div class="card-body">
+        <div class="sig-box" id="sig-box"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">📋 Audit Trail</span></div>
+      <div class="card-body" id="audit-body"></div>
+    </div>
+    <div class="doc-callout" style="margin-top:14px">
+      <h4>🔒 Encryption flow (for zero-trust deployment)</h4>
+      <ul>
+        <li>Set <code>encrypted: true</code> in polydoc+json</li>
+        <li>Encrypt the <code>config+json</code> block content: <code>AES-256-GCM(config, key=HMAC(device_secret, device_id))</code></li>
+        <li>Device derives key from its burned-in secret, decrypts before applying</li>
+        <li>Config is readable <strong>only by the intended device</strong> — even if intercepted</li>
+        <li>AI agents get encrypted blob; with key they can still operate on the data</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── TAB: Docs ── -->
+  <div id="tab-docs" class="tab-content">
+    <div class="doc-callout" style="margin-bottom:14px">
+      <h4>📦 What is this file?</h4>
+      This is a <strong>PolyDoc IoT Config</strong> — a single HTML file that is simultaneously:
+      <ul>
+        <li>✅ The <strong>actual device configuration</strong> (machine-readable <code>config+json</code> block)</li>
+        <li>✅ An <strong>interactive admin panel</strong> (edit in any browser, no backend needed)</li>
+        <li>✅ A <strong>versioned, signed artifact</strong> (schema version, firmware compatibility, signature)</li>
+        <li>✅ <strong>AI-native</strong> — any AI agent reads <code>config+json</code> directly, no scraping</li>
+        <li>✅ Self-contained <strong>documentation</strong> (this tab)</li>
+      </ul>
+    </div>
+    <div class="doc-callout" style="margin-bottom:14px">
+      <h4>🚀 How to apply config to a device</h4>
+      <strong>Option A — HTTP POST (device has web server):</strong>
+      <ul>
+        <li>Click <strong>"Apply to Device"</strong> → POSTs this HTML to <code>POST /config</code></li>
+        <li>Device parses <code>config+json</code>, verifies signature, applies changes, restarts services</li>
+        <li>~50 lines of MicroPython / Lua / C on the device side</li>
+      </ul>
+      <strong>Option B — File upload (airgapped / offline):</strong>
+      <ul>
+        <li>Click <strong>"Download updated file"</strong> → get new HTML with changes baked in</li>
+        <li>Upload to device via SFTP, USB, or provisioning pipeline</li>
+        <li>Works with zero network connectivity on the management side</li>
+      </ul>
+    </div>
+    <div class="doc-callout" style="margin-bottom:14px">
+      <h4>🤖 Minimal device HTTP handler (Python / MicroPython)</h4>
+      <code style="display:block;white-space:pre;line-height:1.7;overflow-x:auto">
+from html.parser import HTMLParser
+import json, hashlib
+
+class ConfigExtractor(HTMLParser):
+    def __init__(self):
+        super().__init__(); self.in_cfg = False; self.data = ""
+    def handle_starttag(self, tag, attrs):
+        if tag == "script":
+            d = dict(attrs)
+            if d.get("type") == "application/config+json": self.in_cfg = True
+    def handle_endtag(self, tag):
+        if tag == "script": self.in_cfg = False
+    def handle_data(self, data):
+        if self.in_cfg: self.data += data
+
+def apply_config(html_body):
+    p = ConfigExtractor(); p.feed(html_body)
+    cfg = json.loads(p.data)
+    # verify signature → apply → restart services
+    return cfg
+      </code>
+    </div>
+    <div class="doc-callout">
+      <h4>🔄 Version compatibility check (device side)</h4>
+      <ul>
+        <li>Device reads <code>polydoc+json</code> → checks <code>schema_version</code> against supported range</li>
+        <li>Checks <code>device.id</code> matches own ID — rejects foreign configs</li>
+        <li>Checks <code>firmware_min</code> / <code>firmware_max</code> — rejects incompatible configs</li>
+        <li>Verifies <code>security.signature</code> — rejects tampered configs</li>
+        <li>All checks happen <strong>before</strong> any changes are applied</li>
+      </ul>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="toolbar-status">
+    <span class="changed-dot" id="changed-dot"></span>
+    <span id="toolbar-status">No changes</span>
+  </div>
+  <button class="btn btn-secondary" onclick="resetAll()">Reset</button>
+  <button class="btn btn-secondary" onclick="copyJson()">Copy JSON</button>
+  <button class="btn btn-download" onclick="downloadFile()">⬇ Download updated file</button>
+  <button class="btn btn-apply" onclick="applyToDevice()">⚡ Apply to Device</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Load data ──────────────────────────────────────────────────────────────
+const META    = JSON.parse(document.querySelector('script[type="application/polydoc+json"]').textContent);
+let original  = JSON.parse(document.getElementById('config-data').textContent);
+let cfg       = JSON.parse(JSON.stringify(original));
+let changed   = false;
+
+// ── Compatibility check ────────────────────────────────────────────────────
+function checkCompat() {
+  const bar  = document.getElementById('compat-bar');
+  const fw   = META.device.firmware_min;
+  // Simulate reading device firmware from a real device:
+  // In production, device serves GET /info → { firmware, schema_supported }
+  const userFw = prompt(
+    `Device compatibility check\n\nDevice: ${META.device.id}\nRequired firmware: ≥ ${fw}\n\nEnter device firmware version (or press Cancel to skip):`,
+    fw
+  );
+  if (!userFw) {
+    bar.className = 'compat-bar warn';
+    bar.innerHTML = `<span class="compat-icon">⚠</span><span class="compat-text"><strong>Compatibility unknown</strong> — device firmware not verified. Apply at your own risk.</span>`;
+    return;
+  }
+  const ok = compareVersions(userFw, fw) >= 0;
+  if (ok) {
+    bar.className = 'compat-bar ok';
+    bar.innerHTML = `<span class="compat-icon">✅</span><span class="compat-text"><strong>Compatible</strong> — firmware ${userFw} ≥ ${fw} · Schema v${META.schema_version} · Device: ${META.device.id}</span>`;
+  } else {
+    bar.className = 'compat-bar err';
+    bar.innerHTML = `<span class="compat-icon">❌</span><span class="compat-text"><strong>Incompatible</strong> — firmware ${userFw} is below required ${fw}. Update firmware before applying.</span>`;
+  }
+}
+function compareVersions(a, b) {
+  const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i]||0) - (pb[i]||0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+// ── Render Network tab ─────────────────────────────────────────────────────
+function renderNetwork() {
+  const root = document.getElementById('iface-cards');
+  root.innerHTML = '';
+  const icons = { wan: '🌍', lan: '🏠', guest: '👥' };
+  for (const [name, iface] of Object.entries(cfg.interfaces)) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    let fields = '';
+    for (const [k, v] of Object.entries(iface)) {
+      const path = `interfaces.${name}.${k}`;
+      fields += `<div class="field">
+        <span class="field-label"><span class="field-key">${k}</span></span>
+        ${renderInput(path, v)}
+      </div>`;
+    }
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="card-title">${icons[name]||'🔌'} ${name.toUpperCase()}</span>
+        <span style="font-size:11px;color:var(--text2);font-family:monospace">${iface.proto||''}</span>
+      </div>
+      <div class="card-body">${fields}</div>`;
+    root.appendChild(card);
+  }
+}
+
+// ── Render Firewall tab ────────────────────────────────────────────────────
+function renderFirewall() {
+  // Policies
+  const pg = document.getElementById('policy-grid');
+  pg.innerHTML = '';
+  for (const [k, v] of Object.entries(cfg.firewall)) {
+    if (k === 'rules' || k === 'syn_flood_protect') continue;
+    const path = `firewall.${k}`;
+    pg.innerHTML += `<div class="policy-item">
+      <div class="policy-label">${k.replace(/_/g,' ')}</div>
+      <select onchange="setPath('${path}', this.value)">
+        ${['ACCEPT','DROP','REJECT'].map(o=>`<option${o===v?' selected':''}>${o}</option>`).join('')}
+      </select>
+    </div>`;
+  }
+  document.getElementById('fw-synflood').checked = cfg.firewall.syn_flood_protect;
+  renderRules();
+}
+
+function renderRules() {
+  const tbody = document.getElementById('rules-body');
+  tbody.innerHTML = '';
+  cfg.firewall.rules.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><label class="toggle" style="margin:0 auto;display:block">
+        <input type="checkbox" ${r.enabled?'checked':''} onchange="cfg.firewall.rules[${i}].enabled=this.checked;markChanged()">
+        <span class="toggle-slider"></span>
+      </label></td>
+      <td><input type="text" value="${esc(r.name)}" oninput="cfg.firewall.rules[${i}].name=this.value;markChanged()" style="min-width:140px"></td>
+      <td>${zoneSelect(`rules_${i}_src`, r.src, v=>{ cfg.firewall.rules[i].src=v; markChanged(); })}</td>
+      <td>${zoneSelect(`rules_${i}_dst`, r.dest, v=>{ cfg.firewall.rules[i].dest=v; markChanged(); })}</td>
+      <td>${protoSelect(`rules_${i}_proto`, r.proto, v=>{ cfg.firewall.rules[i].proto=v; markChanged(); })}</td>
+      <td><input type="text" value="${esc(r.dest_port)}" oninput="cfg.firewall.rules[${i}].dest_port=this.value;markChanged()" style="width:80px"></td>
+      <td>${actionSelect(`rules_${i}_action`, r.action, v=>{ cfg.firewall.rules[i].action=v; markChanged(); })}</td>
+      <td><label class="toggle" style="margin:0 auto;display:block">
+        <input type="checkbox" ${r.log?'checked':''} onchange="cfg.firewall.rules[${i}].log=this.checked;markChanged()">
+        <span class="toggle-slider"></span>
+      </label></td>
+      <td><button class="btn-icon" onclick="removeRule(${i})" title="Delete">✕</button></td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('rules-count').textContent = `(${cfg.firewall.rules.length} rules)`;
+}
+
+const ZONES = ['*','lan','wan','guest',''];
+function zoneSelect(id, val, fn) {
+  window[`_sel_${id}`] = fn;
+  return `<select id="${id}" onchange="window['_sel_${id}'](this.value)">
+    ${ZONES.map(z=>`<option value="${z}"${z===val?' selected':''}>${z||'—'}</option>`).join('')}
+  </select>`;
+}
+const PROTOS = ['*','tcp','udp','icmp'];
+function protoSelect(id, val, fn) {
+  window[`_sel_${id}`] = fn;
+  return `<select id="${id}" onchange="window['_sel_${id}'](this.value)">
+    ${PROTOS.map(p=>`<option value="${p}"${p===val?' selected':''}>${p}</option>`).join('')}
+  </select>`;
+}
+const ACTIONS = ['ACCEPT','DROP','REJECT'];
+function actionSelect(id, val, fn) {
+  window[`_sel_${id}`] = fn;
+  return `<select id="${id}" onchange="window['_sel_${id}'](this.value)">
+    ${ACTIONS.map(a=>`<option value="${a}"${a===val?' selected':''}>${a}</option>`).join('')}
+  </select>`;
+}
+
+function addRule() {
+  cfg.firewall.rules.push({
+    id: 'r' + Date.now(), enabled: true, name: 'New rule',
+    src: 'lan', dest: '', proto: 'tcp', dest_port: '80', action: 'ACCEPT', log: false
+  });
+  renderRules(); markChanged();
+}
+function removeRule(i) {
+  cfg.firewall.rules.splice(i, 1); renderRules(); markChanged();
+}
+
+// ── Render DHCP tab ────────────────────────────────────────────────────────
+function renderDhcp() {
+  const root = document.getElementById('dhcp-cards');
+  root.innerHTML = '';
+  for (const [iface, d] of Object.entries(cfg.dhcp)) {
+    let fields = '';
+    for (const [k, v] of Object.entries(d)) {
+      const path = `dhcp.${iface}.${k}`;
+      fields += `<div class="field">
+        <span class="field-label"><span class="field-key">${k}</span></span>
+        ${renderInput(path, v)}
+      </div>`;
+    }
+    root.innerHTML += `<div class="card">
+      <div class="card-header"><span class="card-title">📡 DHCP — ${iface}</span></div>
+      <div class="card-body">${fields}</div>
+    </div>`;
+  }
+}
+
+// ── Render DNS tab ─────────────────────────────────────────────────────────
+function renderDns() {
+  const root = document.getElementById('dns-body');
+  root.innerHTML = '';
+  for (const [k, v] of Object.entries(cfg.dns)) {
+    const path = `dns.${k}`;
+    const row = document.createElement('div');
+    row.className = 'field';
+    if (Array.isArray(v)) {
+      row.innerHTML = `<span class="field-label"><span class="field-key">${k}</span>comma-separated</span>
+        <input type="text" value="${v.join(', ')}"
+          oninput="setPath('${path}', this.value.split(',').map(s=>s.trim()).filter(Boolean)); markChanged()">`;
+    } else {
+      row.innerHTML = `<span class="field-label"><span class="field-key">${k}</span></span>${renderInput(path, v)}`;
+    }
+    root.appendChild(row);
+  }
+}
+
+// ── Render Security tab ────────────────────────────────────────────────────
+function renderSecurity() {
+  const s = META.security;
+  const a = META.audit;
+  document.getElementById('sig-box').innerHTML = `
+    <div class="sig-row"><span class="sig-key">algorithm</span><span class="sig-val">${s.signature_algo}</span></div>
+    <div class="sig-row"><span class="sig-key">covers</span><span class="sig-val">${s.signature_covers}</span></div>
+    <div class="sig-row"><span class="sig-key">signature</span><span class="sig-val sig-ok" id="sig-val">${s.signature}</span></div>
+    <div class="sig-row"><span class="sig-key">encrypted</span><span class="sig-val ${s.encrypted?'sig-ok':'sig-warn'}">${s.encrypted ? '✓ Yes' : '✗ No (plaintext)'}</span></div>
+  `;
+  document.getElementById('audit-body').innerHTML = `
+    <div class="sig-box">
+      ${Object.entries(a).map(([k,v])=>`<div class="sig-row">
+        <span class="sig-key">${k}</span>
+        <span class="sig-val">${v||'—'}</span>
+      </div>`).join('')}
+    </div>`;
+}
+
+// ── Generic input renderer ─────────────────────────────────────────────────
+function renderInput(path, val) {
+  const type = typeof val;
+  if (type === 'boolean') {
+    return `<div class="toggle-row"><label class="toggle">
+      <input type="checkbox" ${val?'checked':''} onchange="setPath('${path}',this.checked);markChanged()">
+      <span class="toggle-slider"></span>
+    </label></div>`;
+  }
+  if (type === 'number') {
+    return `<input type="number" value="${val}" oninput="setPath('${path}',+this.value);markChanged()">`;
+  }
+  return `<input type="text" value="${esc(String(val))}" oninput="setPath('${path}',this.value);markChanged()">`;
+}
+
+function setPath(path, val) {
+  const parts = path.split('.');
+  let obj = cfg;
+  for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+  obj[parts[parts.length - 1]] = val;
+  markChanged();
+}
+
+function esc(s) { return s.replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['network','firewall','dhcp','dns','security','docs'][i] === id));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  if (id === 'dns')      renderDns();
+  if (id === 'dhcp')     renderDhcp();
+  if (id === 'security') renderSecurity();
+}
+
+// ── Change tracking ────────────────────────────────────────────────────────
+function markChanged() {
+  changed = true;
+  document.getElementById('changed-dot').classList.add('on');
+  document.getElementById('toolbar-status').textContent = 'Unsaved changes';
+}
+
+function resetAll() {
+  cfg = JSON.parse(JSON.stringify(original));
+  changed = false;
+  document.getElementById('changed-dot').classList.remove('on');
+  document.getElementById('toolbar-status').textContent = 'No changes';
+  renderNetwork(); renderFirewall(); renderDhcp(); renderDns(); renderSecurity();
+  toast('Reset to original values', 'ok');
+}
+
+function copyJson() {
+  navigator.clipboard.writeText(JSON.stringify(cfg, null, 2))
+    .then(() => toast('Config JSON copied', 'ok'))
+    .catch(() => toast('Copy failed', 'err'));
+}
+
+// ── PolyDoc magic: rewrite config block & download ─────────────────────────
+function buildUpdatedHtml() {
+  const newJson = JSON.stringify(cfg, null, 2);
+  const html = document.documentElement.outerHTML;
+  return '<!DOCTYPE html>\n' + html.replace(
+    /(<script type="application\/config\+json"[^>]*>)([\s\S]*?)(<\/script>)/,
+    (_, open, _old, close) => open + '\n  ' + newJson.split('\n').join('\n  ') + '\n  ' + close
+  );
+}
+
+function downloadFile() {
+  const blob = new Blob([buildUpdatedHtml()], { type: 'text/html' });
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob),
+    download: `${META.device.id}-config.html`
+  });
+  a.click();
+  toast(`Downloaded ${META.device.id}-config.html ✓`, 'ok');
+}
+
+function applyToDevice() {
+  const endpoint = META.apply.endpoint;
+  if (!confirm(`Apply config to device?\n\nEndpoint: ${endpoint}\nDevice: ${META.device.id}\n\nServices to restart: ${META.apply.restart_required.join(', ')}`)) return;
+
+  const html = buildUpdatedHtml();
+  toast('Sending to device…', '');
+
+  fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/html' },
+    body: html
+  })
+  .then(r => {
+    if (r.ok) {
+      original = JSON.parse(JSON.stringify(cfg));
+      changed = false;
+      document.getElementById('changed-dot').classList.remove('on');
+      document.getElementById('toolbar-status').textContent = 'Applied ✓';
+      toast('Config applied successfully! Device is restarting services…', 'ok');
+    } else {
+      toast(`Device rejected config: HTTP ${r.status}`, 'err');
+    }
+  })
+  .catch(err => {
+    // Expected if device isn't reachable — still useful for download flow
+    toast(`Cannot reach device (${endpoint})\nUse "Download" and upload manually.`, 'warn');
+  });
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+renderNetwork();
+renderFirewall();
+checkCompat();
+</script>
+</body>
+</html>
