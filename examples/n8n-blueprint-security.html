@@ -203,9 +203,10 @@
        Level 3 Critical — red ring + ☠ badge + pulse
     ── */
     @keyframes pulse-critical {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: .4; }
+      0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px var(--locked)); }
+      50%       { opacity: .55; filter: drop-shadow(0 0 14px var(--locked)); }
     }
+    .node-group[data-risk="2"] .node-rect { filter: drop-shadow(0 0 5px rgba(217,119,6,.6)); }
     .node-group[data-risk="3"] { animation: pulse-critical 1.8s ease-in-out infinite; }
     .audit-overlay { pointer-events: none; font-family: sans-serif; }
     .egress-label  { pointer-events: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; opacity: .85; }
@@ -913,9 +914,9 @@ function renderNodes() {
 
     // Risk → visual
     const RISK_STROKE  = ['rgba(255,255,255,.15)', 'var(--accent)', 'var(--amber)', 'var(--locked)'];
-    const RISK_WIDTH   = [1.5, 1.5, 2, 2.5];
+    const RISK_WIDTH   = [1.5, 3, 3.5, 4];
     const strokeColor  = hasPending ? 'var(--prompt)' : RISK_STROKE[risk.level];
-    const strokeWidth  = hasPending ? 1.5 : RISK_WIDTH[risk.level];
+    const strokeWidth  = hasPending ? 2 : RISK_WIDTH[risk.level];
 
     g.setAttribute('data-risk', risk.level);
 
@@ -983,10 +984,10 @@ function renderNodes() {
     if (risk.level >= 2) {
       const rbadge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       rbadge.setAttribute('class', 'node-label');
-      rbadge.setAttribute('x', x + NODE_W - 4);
-      rbadge.setAttribute('y', y + (hasPending ? 26 : 14));
+      rbadge.setAttribute('x', x + NODE_W - 6);
+      rbadge.setAttribute('y', y + (hasPending ? 30 : 20));
       rbadge.setAttribute('text-anchor', 'end');
-      rbadge.setAttribute('font-size', '13');
+      rbadge.setAttribute('font-size', '18');
       rbadge.setAttribute('fill', risk.level === 3 ? 'var(--locked)' : 'var(--amber)');
       rbadge.textContent = risk.level === 3 ? '☠' : '⚠';
       g.appendChild(rbadge);
@@ -1074,8 +1075,8 @@ function _svgEl(tag, attrs) {
 
 function renderEgressArrows() {
   const RISK_COLOR = [null, 'var(--accent)', 'var(--amber)', 'var(--locked)'];
-  const ARROW_LEN  = 90;   // px in SVG units
-  const WAVE_Y     = -10;  // slight upward angle — "leaving"
+  const ARROW_LEN  = 130;  // px in SVG units
+  const WAVE_Y     = -14;  // slight upward angle — "leaving"
 
   for (const node of workflowState.nodes) {
     const risk = node._risk || { level: 0 };
@@ -1097,16 +1098,17 @@ function renderEgressArrows() {
       d: `M${ox},${oy} C${ox + ARROW_LEN * .4},${oy} ${tx - ARROW_LEN * .3},${ty} ${tx},${ty}`,
       fill: 'none',
       stroke: color,
-      'stroke-width': '1.5',
-      'stroke-dasharray': '5,3',
+      'stroke-width': '2',
+      'stroke-dasharray': '6,4',
       'marker-end': `url(#arr-egress-${risk.level})`,
     });
     g.appendChild(line);
 
     // Destination label
     const txt = _svgEl('text', {
-      x: tx + 7, y: ty + 4,
-      'font-size': '10',
+      x: tx + 9, y: ty + 4,
+      'font-size': '12',
+      'font-weight': '600',
       fill: color,
       class: 'egress-label',
     });
