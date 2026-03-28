@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PolyDoc — n8n Blueprint</title>
+  <!-- polydoc:mermaid-start --><script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script><!-- polydoc:mermaid-end -->
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --accent: #4a9eff;
+      --accent2: #79b8ff;
+      --green: #238636;
+      --purple: #7c3aed;
+      --amber: #d97706;
+      --red: #dc2626;
+      --conn: #58a6ff;
+      --conn-true: #56d364;
+      --conn-false: #f85149;
+      --prompt: #d97706;
+      --locked: #f85149;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    #topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 14px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #topbar h1 { font-size: 13px; font-weight: 600; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #doc-meta { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .btn {
+      padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--text); cursor: pointer; font-size: 12px;
+      white-space: nowrap; transition: background 0.15s;
+    }
+    .btn:hover { background: var(--border); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+    #pending-badge {
+      font-size: 11px; padding: 3px 10px; border-radius: 12px; white-space: nowrap;
+      background: rgba(248,81,73,.12); border: 1px solid rgba(248,81,73,.35); color: var(--locked);
+    }
+    #pending-badge.ok { background: rgba(86,211,100,.12); border-color: rgba(86,211,100,.35); color: #56d364; }
+
+    /* ── Layout ── */
+    #layout { display: flex; flex-grow: 1; overflow: hidden; }
+
+    /* ── Left sidebar (docs) ── */
+    #sidebar {
+      width: 270px; min-width: 160px; flex-shrink: 0;
+      background: var(--panel); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; font-size: 13px; line-height: 1.65;
+      overflow: hidden;
+    }
+    #sidebar-toolbar {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 8px; border-bottom: 1px solid var(--border);
+      flex-shrink: 0; background: var(--panel);
+    }
+    #sidebar-toolbar .btn-icon {
+      padding: 3px 7px; border-radius: 5px; border: 1px solid transparent;
+      background: transparent; color: var(--muted); cursor: pointer; font-size: 13px;
+      transition: background .15s, color .15s;
+    }
+    #sidebar-toolbar .btn-icon:hover { background: var(--border); color: var(--text); }
+    #sidebar-toolbar .btn-icon.active { background: rgba(74,158,255,.15); border-color: var(--accent); color: var(--accent); }
+    #sidebar-toolbar span { font-size: 10px; color: var(--muted); margin-left: 2px; flex-grow: 1; }
+    #sidebar-content {
+      flex-grow: 1; overflow-y: auto; padding: 14px 16px;
+    }
+    #docs-editor {
+      flex-grow: 1; resize: none; border: none; outline: none;
+      background: var(--bg); color: var(--text);
+      font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6;
+      padding: 14px 16px; display: none;
+    }
+    #sidebar-resizer {
+      width: 5px; flex-shrink: 0; cursor: col-resize;
+      background: var(--border); transition: background .15s;
+    }
+    #sidebar-resizer:hover, #sidebar-resizer.dragging { background: var(--accent); }
+    #sidebar-content h1 { font-size: 15px; margin-bottom: 6px; }
+    #sidebar-content h2 { font-size: 12px; font-weight: 700; color: var(--accent); margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .5px; }
+    #sidebar-content h3 { font-size: 12px; color: var(--accent2); margin: 10px 0 3px; }
+    #sidebar-content p { color: var(--muted); margin-bottom: 8px; }
+    #sidebar-content ul { padding-left: 14px; color: var(--muted); }
+    #sidebar-content li { margin-bottom: 3px; }
+    #sidebar-content code { background: var(--border); padding: 1px 5px; border-radius: 3px; font-size: 11px; font-family: monospace; }
+    #sidebar-content pre { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 11px; font-family: monospace; overflow-x: auto; margin-bottom: 8px; }
+    #sidebar-content .mermaid { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 8px; text-align: center; }
+    #sidebar-content .mermaid svg { max-width: 100%; height: auto; }
+    #sidebar-content strong { color: var(--text); }
+    #sidebar-content em { color: var(--accent2); font-style: normal; }
+    #sidebar-content hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+    /* ── Canvas ── */
+    #canvas-wrap {
+      flex-grow: 1; position: relative; overflow: hidden;
+      background: var(--bg);
+      background-image: radial-gradient(circle, #21262d 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    #canvas-svg { width: 100%; height: 100%; cursor: grab; display: block; }
+    #canvas-svg.panning { cursor: grabbing; }
+
+    /* SVG node styling */
+    .node-group { cursor: pointer; }
+    .node-group:hover .node-rect { filter: brightness(1.15); }
+    .node-group.selected .node-rect { stroke: var(--accent) !important; stroke-width: 2.5 !important; }
+    .node-label { pointer-events: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .conn-path { fill: none; stroke-width: 2; stroke-linecap: round; }
+    .badge-dot { pointer-events: none; }
+
+    /* ── Zoom controls ── */
+    #zoom-controls { position: absolute; bottom: 14px; right: 14px; display: flex; flex-direction: column; gap: 4px; }
+    .zoom-btn {
+      width: 30px; height: 30px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); cursor: pointer; font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .zoom-btn:hover { background: var(--border); }
+
+    /* ── Right editor panel ── */
+    #node-editor {
+      width: 330px; flex-shrink: 0;
+      background: var(--panel); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+      transform: translateX(100%); transition: transform .2s ease;
+    }
+    #node-editor.open { transform: translateX(0); }
+    #editor-header {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 8px; flex-shrink: 0;
+    }
+    #editor-header-info { flex-grow: 1; }
+    #editor-node-name { font-size: 13px; font-weight: 600; }
+    #editor-node-type { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: monospace; }
+    #editor-body { padding: 12px 14px; overflow-y: auto; flex-grow: 1; }
+
+    /* Param fields */
+    .param-group { margin-bottom: 14px; }
+    .param-label { font-size: 10px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
+    .param-input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 6px 8px; color: var(--text);
+      font-size: 12px; font-family: monospace; resize: vertical;
+    }
+    .param-input:focus { outline: none; border-color: var(--accent); }
+
+    /* 555-PROMPT */
+    .param-prompt-wrap {
+      background: rgba(217,119,6,.08); border: 1px solid rgba(217,119,6,.3);
+      border-radius: 6px; padding: 8px;
+    }
+    .param-prompt-header { font-size: 10px; color: var(--prompt); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; font-weight: 700; }
+    .param-prompt-hint { font-size: 11px; color: var(--amber); margin-bottom: 6px; }
+
+    /* 555-LOCKED */
+    .param-locked-wrap {
+      background: rgba(248,81,73,.08); border: 1px solid rgba(248,81,73,.3);
+      border-radius: 6px; padding: 8px;
+    }
+    .param-locked-header { font-size: 10px; color: var(--locked); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; font-weight: 700; }
+    .decrypt-row { display: flex; gap: 6px; }
+    .decrypt-row input {
+      flex-grow: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 5px 8px; color: var(--text); font-size: 12px;
+    }
+    .decrypt-row input:focus { outline: none; border-color: var(--locked); }
+
+    /* Encrypt helper */
+    .encrypt-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .encrypt-label { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+    .encrypt-row { display: flex; gap: 6px; flex-direction: column; }
+    .encrypt-row input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 5px 8px; color: var(--text); font-size: 12px;
+    }
+
+    /* ── Security audit overlays ── */
+    @keyframes pulse-critical {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .45; }
+    }
+    .node-group.audit-critical .node-rect { stroke: var(--locked) !important; stroke-width: 2.5 !important; }
+    .node-group.audit-warning  .node-rect { stroke: var(--amber)  !important; stroke-width: 2   !important; }
+    .node-group.audit-critical { animation: pulse-critical 1.8s ease-in-out infinite; }
+    .audit-overlay { pointer-events: none; font-family: sans-serif; }
+
+    /* ── Audit floating panel ── */
+    #audit-panel {
+      position: absolute; top: 0; right: 0; bottom: 0;
+      width: 340px; background: var(--panel); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      transform: translateX(100%); transition: transform .2s ease; z-index: 20;
+    }
+    #audit-panel.open { transform: translateX(0); }
+    #audit-panel-header {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    }
+    #audit-panel-header h2 { font-size: 13px; font-weight: 600; flex-grow: 1; }
+    #audit-panel-body { padding: 12px 14px; overflow-y: auto; flex-grow: 1; font-size: 12px; }
+    .audit-section-title {
+      font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .5px; margin: 12px 0 6px;
+    }
+    .audit-section-title:first-child { margin-top: 0; }
+    .audit-finding {
+      background: var(--bg); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px;
+      border-left: 3px solid var(--border);
+    }
+    .audit-finding.critical { border-left-color: var(--locked); }
+    .audit-finding.warning  { border-left-color: var(--amber); }
+    .audit-finding-node { font-weight: 600; color: var(--text); cursor: pointer; }
+    .audit-finding-node:hover { color: var(--accent); }
+    .audit-finding-msg { color: var(--muted); margin-top: 3px; line-height: 1.4; }
+    .audit-vt-link { display: inline-block; margin-top: 4px; color: var(--accent); font-size: 11px; }
+    .audit-ai-config { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
+    .audit-ai-config input {
+      width: 100%; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 5px; padding: 5px 8px; color: var(--text); font-size: 11px;
+      margin-top: 5px; font-family: monospace;
+    }
+    .audit-ai-config input:focus { outline: none; border-color: var(--accent); }
+    .audit-ai-config label { font-size: 10px; color: var(--muted); display: block; margin-top: 8px; }
+    .audit-ai-config label:first-child { margin-top: 0; }
+    .audit-run-btn {
+      width: 100%; margin-top: 10px; padding: 7px; border-radius: 6px;
+      background: var(--accent); border: none; color: #fff; font-size: 12px;
+      font-weight: 600; cursor: pointer;
+    }
+    .audit-run-btn:hover { background: var(--accent2); }
+    .audit-run-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .audit-empty { color: var(--muted); text-align: center; padding: 24px 0; }
+
+    /* Security section inside node editor */
+    .sec-section { background: var(--bg); border-radius: 6px; padding: 8px 10px; margin-bottom: 14px; border: 1px solid var(--border); }
+    .sec-section.critical { border-color: rgba(248,81,73,.5); }
+    .sec-section.warning  { border-color: rgba(217,119,6,.5); }
+    .sec-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+    .sec-section.critical .sec-section-title { color: var(--locked); }
+    .sec-section.warning  .sec-section-title { color: var(--amber); }
+    .sec-item { font-size: 11px; color: var(--muted); padding: 3px 0; border-top: 1px solid var(--border); line-height: 1.4; }
+    .sec-item:first-of-type { border-top: none; }
+    .sec-item a { color: var(--accent); }
+
+    /* Drag & drop overlay */
+    #drop-overlay {
+      position: absolute; inset: 0; z-index: 50;
+      background: rgba(74, 158, 255, .12);
+      border: 3px dashed var(--accent);
+      border-radius: 12px; margin: 12px;
+      display: none; align-items: center; justify-content: center;
+      font-size: 18px; color: var(--accent); font-weight: 600;
+      pointer-events: none;
+    }
+    #canvas-wrap.drag-over #drop-overlay { display: flex; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 18px; font-size: 13px; transition: transform .25s ease; z-index: 9999; pointer-events: none;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.error { border-color: var(--locked); color: var(--locked); }
+    #toast.success { border-color: #56d364; color: #56d364; }
+  </style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1 id="doc-title">n8n Blueprint</h1>
+  <span id="doc-meta"></span>
+  <span id="pending-badge">…</span>
+  <input type="file" id="json-file-input" accept=".json,application/json" style="display:none" onchange="loadJsonFile(this)">
+  <input type="file" id="md-file-input" accept=".md,.markdown,text/markdown,text/plain" style="display:none" onchange="loadMdFile(this)">
+  <button class="btn" id="btn-load" onclick="document.getElementById('json-file-input').click()" title="Load n8n workflow JSON export">📂 Load JSON</button>
+  <button class="btn" id="btn-load-md" onclick="document.getElementById('md-file-input').click()" title="Load Markdown documentation">📄 Load MD</button>
+  <button class="btn" id="btn-save" onclick="saveBlueprint()" title="Save current workflow state into a new Blueprint HTML file">💾 Save Blueprint</button>
+  <button class="btn" onclick="fitView()">⊡ Fit</button>
+  <button class="btn" id="btn-audit" onclick="toggleAuditPanel()">🔍 Audit</button>
+  <button class="btn" id="btn-integrate" onclick="integrateMermaid()" title="Fetch Mermaid from CDN and save a fully offline copy">⬇ Offline</button>
+  <button class="btn" id="btn-drop" onclick="dropMermaid()" title="Remove inlined Mermaid, revert to CDN link">✂ Lean</button>
+  <button class="btn btn-primary" id="btn-copy" onclick="copyToN8n()">📋 Copy to n8n</button>
+</div>
+
+<div id="layout">
+  <div id="sidebar">
+    <div id="sidebar-toolbar">
+      <button class="btn-icon" id="btn-docs-edit" onclick="toggleDocsEdit()" title="Edit docs">✏</button>
+      <span id="docs-mode-label"></span>
+    </div>
+    <div id="sidebar-content"></div>
+    <textarea id="docs-editor" spellcheck="false"></textarea>
+  </div>
+  <div id="sidebar-resizer"></div>
+
+  <div id="canvas-wrap">
+    <div id="drop-overlay">⬇ Drop n8n JSON here</div>
+    <svg id="canvas-svg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10z" fill="var(--conn)"/>
+        </marker>
+        <marker id="arr-true" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10z" fill="var(--conn-true)"/>
+        </marker>
+        <marker id="arr-false" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10z" fill="var(--conn-false)"/>
+        </marker>
+      </defs>
+      <g id="canvas-root"></g>
+    </svg>
+    <div id="zoom-controls">
+      <button class="zoom-btn" onclick="zoom(1.2)" title="Přiblížit">+</button>
+      <button class="zoom-btn" onclick="zoom(0.8)" title="Oddálit">−</button>
+      <button class="zoom-btn" onclick="fitView()" title="Zobrazit vše" style="font-size:12px">⊞</button>
+    </div>
+
+    <!-- ── Security Audit Panel ── -->
+    <div id="audit-panel">
+      <div id="audit-panel-header">
+        <h2>🔍 Security Audit</h2>
+        <button class="btn" onclick="toggleAuditPanel()" style="flex-shrink:0">✕</button>
+      </div>
+      <div id="audit-panel-body">
+        <div id="audit-scan-results"><p class="audit-empty">Load a workflow to scan.</p></div>
+        <div class="audit-section-title" style="margin-top:16px">🤖 AI Audit</div>
+        <div class="audit-ai-config">
+          <label>LLM Endpoint (OpenAI-compatible)</label>
+          <input id="audit-endpoint" type="url" placeholder="https://api.openai.com/v1/chat/completions" value="https://api.openai.com/v1/chat/completions">
+          <label>Model</label>
+          <input id="audit-model" type="text" placeholder="gpt-4o-mini" value="gpt-4o-mini">
+          <label>API Key</label>
+          <input id="audit-key" type="password" placeholder="sk-… (stays in memory only)">
+          <button class="audit-run-btn" id="btn-run-ai-audit" onclick="runAiAudit()">▶ Run AI Audit</button>
+        </div>
+        <div id="audit-ai-results"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="node-editor">
+    <div id="editor-header">
+      <div id="editor-header-info">
+        <div id="editor-node-name">Uzel</div>
+        <div id="editor-node-type"></div>
+      </div>
+      <button class="btn" onclick="closeEditor()" style="flex-shrink:0">✕</button>
+    </div>
+    <div id="editor-body"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DATA — PolyJSON
+     Edituj tento blok pro přizpůsobení workflow a dokumentace.
+     ═══════════════════════════════════════════════════════════ -->
+<script type="application/poly+json">
+{
+  "poly": {
+    "version": "1.0",
+    "type": "n8n-blueprint",
+    "lang": "en",
+    "security": {
+      "_note": "DEMO ONLY. PolyDoc defines the 555- protocol format. Key management is outside PolyDoc scope."
+    }
+  },
+  "content": {
+    "docs": "# Customer Onboarding\n\nAutomated workflow for processing new customer sign-ups from a web form.\n\n## Flow\n\n```mermaid\nflowchart TD\n    A([Webhook]) --> B[Normalize Data]\n    B --> C[Verify Email]\n    C --> D{Valid Email?}\n    D -- true --> E[(Save to DB)]\n    D -- true --> F[/Send Welcome Email/]\n    D -- false --> G[Log Invalid Email]\n```\n\n## What it does\n\n- Receives sign-up data via webhook\n- Normalises input (lowercase email, trim whitespace)\n- Verifies email address via external API\n- Inserts customer record into PostgreSQL\n- Sends a welcome email via SMTP\n\n## Prerequisites\n\n- **n8n** >= 1.0, self-hosted or cloud\n- **PostgreSQL** — `customers` table must exist (see SQL below)\n- **Email validation API key** — emailvalidation.io or Hunter.io\n- **SMTP server** — for sending welcome emails\n\n## SQL setup\n\n```sql\nCREATE TABLE customers (\n  id SERIAL PRIMARY KEY,\n  email TEXT UNIQUE NOT NULL,\n  name TEXT,\n  created_at TIMESTAMPTZ DEFAULT NOW()\n);\n```\n\n## Configuration\n\nClick any node on the canvas and fill in parameters marked **⚠ FILL IN**.\n\n## Parameters to fill in\n\n- `Verify Email` — emailvalidation.io API key\n- `Save to DB` — PostgreSQL host, user, password\n- `Send Welcome Email` — SMTP credentials",
+    "n8n_data": {
+      "name": "Customer Onboarding",
+      "nodes": [
+        {
+          "id": "n1",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 1,
+          "position": [80, 280],
+          "parameters": {
+            "path": "customer-signup",
+            "responseMode": "onReceived",
+            "responseData": "noData",
+            "httpMethod": "POST"
+          }
+        },
+        {
+          "id": "n2",
+          "name": "Normalize Data",
+          "type": "n8n-nodes-base.set",
+          "typeVersion": 3,
+          "position": [340, 280],
+          "parameters": {
+            "mode": "manual",
+            "email": "={{ $json.email.toLowerCase().trim() }}",
+            "name": "={{ $json.name.trim() }}"
+          }
+        },
+        {
+          "id": "n3",
+          "name": "Verify Email",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4,
+          "position": [600, 280],
+          "parameters": {
+            "url": "https://api.emailvalidation.io/v1/info",
+            "method": "GET",
+            "queryParameters": "={{ 'email=' + $json.email }}",
+            "apiKey": "555-PROMPT:Enter your email validation API key (emailvalidation.io or Hunter.io)"
+          }
+        },
+        {
+          "id": "n4",
+          "name": "Valid Email?",
+          "type": "n8n-nodes-base.if",
+          "typeVersion": 2,
+          "position": [860, 280],
+          "parameters": {
+            "conditions": "={{ $json.format_valid === true && $json.mx_found === true }}",
+            "trueLabel": "Platný email",
+            "falseLabel": "Neplatný email"
+          }
+        },
+        {
+          "id": "n5",
+          "name": "Save to DB",
+          "type": "n8n-nodes-base.postgres",
+          "typeVersion": 2,
+          "position": [1120, 140],
+          "parameters": {
+            "host": "555-PROMPT:PostgreSQL hostname (e.g. 10.119.253.21)",
+            "port": 5434,
+            "database": "clients",
+            "user": "555-PROMPT:Database username",
+            "password": "555-PROMPT:Database password (or use Encrypt below to store as AES)",
+            "query": "INSERT INTO customers (email, name) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING",
+            "ssl": false
+          }
+        },
+        {
+          "id": "n6",
+          "name": "Send Welcome Email",
+          "type": "n8n-nodes-base.emailSend",
+          "typeVersion": 2,
+          "position": [1120, 420],
+          "parameters": {
+            "fromEmail": "noreply@example.cz",
+            "toEmail": "={{ $('Normalize Data').item.json.email }}",
+            "subject": "Vítejte!",
+            "text": "Dobrý den {{ $('Normalize Data').item.json.name }}, vítejte v systému.",
+            "smtpHost": "555-PROMPT:SMTP hostname (e.g. smtp.gmail.com)",
+            "smtpPort": 587,
+            "smtpUser": "555-PROMPT:SMTP login email",
+            "smtpPassword": "555-PROMPT:SMTP password or App Password"
+          }
+        },
+        {
+          "id": "n7",
+          "name": "Log Invalid Email",
+          "type": "n8n-nodes-base.noOp",
+          "typeVersion": 1,
+          "position": [1120, 560],
+          "parameters": {
+            "notice": "Neplatný email — zaznamenat incident nebo vrátit chybu"
+          }
+        }
+      ],
+      "connections": {
+        "Webhook": {
+          "main": [[{"node": "Normalize Data", "type": "main", "index": 0}]]
+        },
+        "Normalize Data": {
+          "main": [[{"node": "Verify Email", "type": "main", "index": 0}]]
+        },
+        "Verify Email": {
+          "main": [[{"node": "Valid Email?", "type": "main", "index": 0}]]
+        },
+        "Valid Email?": {
+          "main": [
+            [{"node": "Save to DB", "type": "main", "index": 0},
+             {"node": "Send Welcome Email", "type": "main", "index": 0}],
+            [{"node": "Log Invalid Email", "type": "main", "index": 0}]
+          ]
+        }
+      },
+      "settings": { "executionOrder": "v1" }
+    }
+  }
+}
+</script>
+
+<!-- ════════════════════════════════════════════════
+     APP — vanilla JS, zero dependencies
+     ════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────
+let polyData = null;          // parsed poly+json
+let workflowState = null;     // deep copy of n8n_data, tracks live edits
+let selectedNodeId = null;
+const NODE_W = 180, NODE_H = 60;
+
+// ViewBox state
+let vb = { x: 0, y: 0, w: 1400, h: 700 };
+
+// ── Node type → color ───────────────────────────────────────
+const NODE_COLORS = {
+  webhook:      '#1a7f37',
+  httpRequest:  '#1f5cb3',
+  set:          '#92570a',
+  if:           '#5b2b9c',
+  postgres:     '#1e4d6e',
+  emailSend:    '#8b1e1e',
+  noOp:         '#374151',
+};
+const TYPE_ICONS = {
+  webhook:      '⚡',
+  httpRequest:  '🌐',
+  set:          '✏',
+  if:           '⟨?⟩',
+  postgres:     '🗄',
+  emailSend:    '✉',
+  noOp:         '○',
+};
+
+function nodeTypeShort(type) {
+  return (type || '').replace('n8n-nodes-base.', '');
+}
+function nodeColor(type) {
+  return NODE_COLORS[nodeTypeShort(type)] || '#1a3a5c';
+}
+function nodeIcon(type) {
+  return TYPE_ICONS[nodeTypeShort(type)] || '●';
+}
+
+// ── i18n ───────────────────────────────────────────────────
+const STRINGS = {
+  en: {
+    copy_btn:          'Copy to n8n',
+    pending_none:      '✓ Ready to copy',
+    pending_some:      n => `⚠ ${n} node${n > 1 ? 's' : ''} need input`,
+    prompt_header:     '⚠ FILL IN',
+    locked_header:     '🔒 ENCRYPTED — enter password to decrypt',
+    decrypt_btn:       'Decrypt',
+    decrypt_ok:        '✓ Decrypted — value saved',
+    decrypt_err:       '✗ Wrong password or corrupted data',
+    encrypt_label:     '🔐 Encrypt a value to 555-LOCKED-aes256',
+    encrypt_btn:       'Encrypt',
+    encrypt_ok:        k => `✓ Parameter "${k}" encrypted`,
+    encrypt_no_pw:     'Enter a password',
+    encrypt_no_plain:  'Select a parameter with a plaintext value',
+    pw_placeholder:    'Password…',
+    value_placeholder: 'Enter value…',
+    copy_ok:           '✓ Copied! Go to n8n and press Ctrl+V',
+    copy_pending:      names => `⚠ Fill in first: ${names}`,
+    copy_err:          'Error: clipboard unavailable (HTTPS required)',
+    node_default:      'Node',
+    mermaid_fetching:  '⬇ Fetching Mermaid from CDN…',
+    mermaid_integrated:'✓ Mermaid inlined — offline file downloaded',
+    mermaid_dropped:   '✓ CDN version saved',
+    mermaid_no_marker: 'Marker not found — was the file modified?',
+    mermaid_fetch_err: e => `Fetch error: ${e}`,
+    load_btn:          '📂 Load JSON',
+    load_ok:           name => `✓ Loaded: ${name}`,
+    load_err:          'Not a valid n8n workflow JSON (missing nodes/connections)',
+    load_parse_err:    'JSON parse error',
+    drop_hint:         'Drop n8n workflow JSON here',
+    save_btn:          '💾 Save Blueprint',
+    save_ok:           name => `✓ Saved: ${name}`,
+    save_err:          'poly+json block not found — was the file modified?',
+    load_md_ok:        '✓ Docs loaded',
+    docs_view:         'view',
+    docs_edit:         'edit',
+  },
+  cs: {
+    copy_btn:          'Kopírovat pro n8n',
+    pending_none:      '✓ Připraveno ke kopírování',
+    pending_some:      n => `⚠ ${n} uzel${n > 1 ? (n < 5 ? 'y' : 'ů') : ''} čeká na vyplnění`,
+    prompt_header:     '⚠ VYPLNIT',
+    locked_header:     '🔒 ŠIFROVÁNO — zadejte heslo pro dešifrování',
+    decrypt_btn:       'Dešifrovat',
+    decrypt_ok:        '✓ Dešifrováno — hodnota uložena',
+    decrypt_err:       '✗ Špatné heslo nebo poškozená data',
+    encrypt_label:     '🔐 Zašifrovat hodnotu do 555-LOCKED-aes256',
+    encrypt_btn:       'Zašifrovat',
+    encrypt_ok:        k => `✓ Parametr "${k}" zašifrován`,
+    encrypt_no_pw:     'Zadejte heslo',
+    encrypt_no_plain:  'Vyberte parametr s plaintext hodnotou',
+    pw_placeholder:    'Heslo…',
+    value_placeholder: 'Zadejte hodnotu…',
+    copy_ok:           '✓ Zkopírováno! Jdi do n8n a stiskni Ctrl+V',
+    copy_pending:      names => `⚠ Nevyplněno: ${names}`,
+    copy_err:          'Chyba: clipboard nedostupný (HTTPS required)',
+    node_default:      'Uzel',
+    mermaid_fetching:  '⬇ Stahuji Mermaid z CDN…',
+    mermaid_integrated:'✓ Mermaid vložen — offline soubor stažen',
+    mermaid_dropped:   '✓ CDN verze uložena',
+    mermaid_no_marker: 'Marker nenalezen — byl soubor upraven?',
+    mermaid_fetch_err: e => `Chyba stahování: ${e}`,
+    load_btn:          '📂 Načíst JSON',
+    load_ok:           name => `✓ Načteno: ${name}`,
+    load_err:          'Neplatný n8n workflow JSON (chybí nodes/connections)',
+    load_parse_err:    'Chyba parsování JSON',
+    drop_hint:         'Přetáhni n8n workflow JSON sem',
+    save_btn:          '💾 Uložit Blueprint',
+    save_ok:           name => `✓ Uloženo: ${name}`,
+    save_err:          'poly+json blok nenalezen — byl soubor upraven?',
+    load_md_ok:        '✓ Dokumentace načtena',
+    docs_view:         'náhled',
+    docs_edit:         'editor',
+  },
+};
+
+let _lang = 'en';
+function initLang(lang) { _lang = STRINGS[lang] ? lang : 'en'; }
+function t(key, ...args) {
+  const v = STRINGS[_lang][key];
+  return typeof v === 'function' ? v(...args) : v;
+}
+
+// ── Bootstrap ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const dataEl = document.querySelector('script[type="application/poly+json"]');
+  if (!dataEl) { alert('Error: poly+json block not found'); return; }
+  try { polyData = JSON.parse(dataEl.textContent); }
+  catch (e) { alert('Error parsing poly+json: ' + e.message); return; }
+
+  // Localisation — reads poly.lang, defaults to 'en'
+  initLang(polyData.poly.lang || 'en');
+  document.getElementById('btn-copy').textContent = '📋 ' + t('copy_btn');
+  document.getElementById('btn-load').textContent = t('load_btn');
+  document.getElementById('drop-overlay').textContent = '⬇ ' + t('drop_hint');
+  document.getElementById('docs-mode-label').textContent = t('docs_view');
+
+  workflowState = JSON.parse(JSON.stringify(polyData.content.n8n_data));
+
+  renderDocs();
+  initSVG();
+  renderGraph();
+  fitView();
+  updatePendingBadge();
+  scanAllNodes();
+
+  const meta = polyData.poly;
+  const docs = polyData.content.docs || '';
+  const firstLine = docs.split('\n')[0].replace(/^#+ /, '');
+  document.title = 'PolyDoc — ' + firstLine;
+  document.getElementById('doc-title').textContent = firstLine || 'n8n Blueprint';
+  document.getElementById('doc-meta').textContent = 'PolyDoc n8n Blueprint';
+});
+
+// ── Markdown renderer (minimal, s podporou fenced code bloků) ──
+function renderMd(md) {
+  const lines = md.split('\n');
+  let html = '';
+  let inUl = false;
+  let fence = null;   // null | 'mermaid' | 'code'
+  let fenceBuf = [];
+
+  const flushUl = () => { if (inUl) { html += '</ul>'; inUl = false; } };
+  const flushFence = () => {
+    if (fence === 'mermaid') {
+      // Mermaid diagram — div.mermaid, mermaid.run() zpracuje po vložení do DOM
+      html += `<div class="mermaid">${fenceBuf.join('\n')}</div>`;
+    } else {
+      html += `<pre><code>${fenceBuf.map(esc).join('\n')}</code></pre>`;
+    }
+    fence = null; fenceBuf = [];
+  };
+
+  for (const line of lines) {
+    if (fence !== null) {
+      if (line.startsWith('```')) { flushFence(); }
+      else { fenceBuf.push(line); }
+      continue;
+    }
+    if (line.startsWith('```')) {
+      flushUl();
+      const lang = line.slice(3).trim().toLowerCase();
+      fence = lang === 'mermaid' ? 'mermaid' : 'code';
+      fenceBuf = [];
+      continue;
+    }
+    if (line.startsWith('### ')) {
+      flushUl(); html += `<h3>${esc(line.slice(4))}</h3>`;
+    } else if (line.startsWith('## ')) {
+      flushUl(); html += `<h2>${esc(line.slice(3))}</h2>`;
+    } else if (line.startsWith('# ')) {
+      flushUl(); html += `<h1>${esc(line.slice(2))}</h1>`;
+    } else if (line.startsWith('- ')) {
+      if (!inUl) { html += '<ul>'; inUl = true; }
+      html += `<li>${inlineFormat(line.slice(2))}</li>`;
+    } else if (line.startsWith('---')) {
+      flushUl(); html += '<hr>';
+    } else if (line.trim() === '') {
+      flushUl();
+    } else {
+      flushUl(); html += `<p>${inlineFormat(line)}</p>`;
+    }
+  }
+  if (fence !== null) flushFence();
+  if (inUl) html += '</ul>';
+  return html;
+}
+
+function inlineFormat(s) {
+  return esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderDocs() {
+  const md = polyData.content.docs || '_No documentation._';
+  const content = document.getElementById('sidebar-content');
+  content.innerHTML = renderMd(md);
+  if (window.mermaid && content.querySelector('.mermaid')) {
+    mermaid.initialize({ startOnLoad: false, theme: 'dark', darkMode: true });
+    mermaid.run({ nodes: content.querySelectorAll('.mermaid') });
+  }
+}
+
+// ── SVG Canvas ─────────────────────────────────────────────
+const svg = document.getElementById('canvas-svg');
+const root = document.getElementById('canvas-root');
+
+function initSVG() {
+  updateViewBox();
+
+  let panning = false, panLast = { x: 0, y: 0 };
+
+  svg.addEventListener('mousedown', e => {
+    if (e.target === svg || e.target.id === 'canvas-root' || e.target.classList.contains('conn-path')) {
+      panning = true;
+      panLast = { x: e.clientX, y: e.clientY };
+      svg.classList.add('panning');
+      e.preventDefault();
+    }
+  });
+  window.addEventListener('mousemove', e => {
+    if (!panning) return;
+    const rect = svg.getBoundingClientRect();
+    const scaleX = vb.w / rect.width;
+    const scaleY = vb.h / rect.height;
+    vb.x -= (e.clientX - panLast.x) * scaleX;
+    vb.y -= (e.clientY - panLast.y) * scaleY;
+    panLast = { x: e.clientX, y: e.clientY };
+    updateViewBox();
+  });
+  window.addEventListener('mouseup', () => { panning = false; svg.classList.remove('panning'); });
+
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = svg.getBoundingClientRect();
+    const f = e.deltaY < 0 ? 0.85 : 1.15;
+    const mx = (e.clientX - rect.left) / rect.width  * vb.w + vb.x;
+    const my = (e.clientY - rect.top)  / rect.height * vb.h + vb.y;
+    vb.w *= f; vb.h *= f;
+    vb.x = mx - (mx - vb.x) * f;
+    vb.y = my - (my - vb.y) * f;
+    updateViewBox();
+  }, { passive: false });
+}
+
+function updateViewBox() {
+  svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+}
+
+function zoom(factor) {
+  const cx = vb.x + vb.w / 2, cy = vb.y + vb.h / 2;
+  vb.w /= factor; vb.h /= factor;
+  vb.x = cx - vb.w / 2; vb.y = cy - vb.h / 2;
+  updateViewBox();
+}
+
+function fitView() {
+  const nodes = workflowState.nodes;
+  if (!nodes.length) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of nodes) {
+    const [x, y] = n.position;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + NODE_W);
+    maxY = Math.max(maxY, y + NODE_H);
+  }
+  const pad = 60;
+  const rect = svg.getBoundingClientRect();
+  const ratio = rect.width / rect.height;
+  const bw = (maxX - minX) + pad * 2;
+  const bh = (maxY - minY) + pad * 2;
+  vb.w = Math.max(bw, bh * ratio);
+  vb.h = vb.w / ratio;
+  vb.x = minX - pad - (vb.w - bw) / 2;
+  vb.y = minY - pad - (vb.h - bh) / 2;
+  updateViewBox();
+}
+
+// ── Graph rendering ────────────────────────────────────────
+function renderGraph() {
+  root.innerHTML = '';
+  renderConnections();
+  renderNodes();
+}
+
+function renderConnections() {
+  const conns = workflowState.connections;
+  const nodeMap = {};
+  for (const n of workflowState.nodes) nodeMap[n.name] = n;
+
+  for (const [fromName, outputs] of Object.entries(conns)) {
+    const fromNode = nodeMap[fromName];
+    if (!fromNode) continue;
+    const [fx, fy] = fromNode.position || [0, 0];
+
+    const isIF = nodeTypeShort(fromNode.type) === 'if';
+
+    (outputs.main || []).forEach((portTargets, portIndex) => {
+      const color = isIF ? (portIndex === 0 ? 'var(--conn-true)' : 'var(--conn-false)') : 'var(--conn)';
+      const markerId = isIF ? (portIndex === 0 ? 'arr-true' : 'arr-false') : 'arr';
+      const portCount = (outputs.main || []).length;
+      const portOffsetY = portCount === 1 ? NODE_H / 2 : NODE_H * (portIndex + 1) / (portCount + 1);
+
+      for (const target of portTargets) {
+        const toNode = nodeMap[target.node];
+        if (!toNode) continue;
+        const [tx, ty] = toNode.position || [0, 0];
+
+        const x1 = fx + NODE_W, y1 = fy + portOffsetY;
+        const x2 = tx,          y2 = ty + NODE_H / 2;
+        const cp = Math.abs(x2 - x1) * 0.5;
+        const d = `M${x1},${y1} C${x1+cp},${y1} ${x2-cp},${y2} ${x2},${y2}`;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', d);
+        path.setAttribute('class', 'conn-path');
+        path.setAttribute('stroke', color);
+        path.setAttribute('marker-end', `url(#${markerId})`);
+        root.appendChild(path);
+
+        if (isIF) {
+          const lx = (x1 + x2) / 2, ly = (y1 + y2) / 2 - 8;
+          const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          label.setAttribute('x', lx); label.setAttribute('y', ly);
+          label.setAttribute('text-anchor', 'middle');
+          label.setAttribute('font-size', '9');
+          label.setAttribute('fill', color);
+          label.setAttribute('font-family', 'monospace');
+          label.textContent = portIndex === 0 ? 'true' : 'false';
+          root.appendChild(label);
+        }
+      }
+    });
+  }
+}
+
+function renderNodes() {
+  for (const node of workflowState.nodes) {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'node-group');
+    g.setAttribute('data-id', node.id);
+
+    const [x, y] = node.position || [0, 0];
+    const color = nodeColor(node.type);
+    const icon = nodeIcon(node.type);
+    const hasPending = nodeHasPending(node);
+
+    // Main rect
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('class', 'node-rect');
+    rect.setAttribute('x', x); rect.setAttribute('y', y);
+    rect.setAttribute('width', NODE_W); rect.setAttribute('height', NODE_H);
+    rect.setAttribute('rx', 8); rect.setAttribute('ry', 8);
+    rect.setAttribute('fill', color);
+    rect.setAttribute('stroke', hasPending ? 'var(--prompt)' : 'rgba(255,255,255,.15)');
+    rect.setAttribute('stroke-width', '1.5');
+    g.appendChild(rect);
+
+    // Icon strip (left)
+    const strip = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    strip.setAttribute('x', x); strip.setAttribute('y', y);
+    strip.setAttribute('width', 36); strip.setAttribute('height', NODE_H);
+    strip.setAttribute('rx', 8); strip.setAttribute('ry', 8);
+    strip.setAttribute('fill', 'rgba(0,0,0,.25)');
+    g.appendChild(strip);
+    // Clip right edge of strip
+    const stripClip = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    stripClip.setAttribute('x', x+18); stripClip.setAttribute('y', y);
+    stripClip.setAttribute('width', 18); stripClip.setAttribute('height', NODE_H);
+    stripClip.setAttribute('fill', color);
+    g.appendChild(stripClip);
+
+    // Icon text
+    const iconEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    iconEl.setAttribute('class', 'node-label');
+    iconEl.setAttribute('x', x + 18); iconEl.setAttribute('y', y + 36);
+    iconEl.setAttribute('text-anchor', 'middle');
+    iconEl.setAttribute('font-size', '16');
+    iconEl.setAttribute('fill', 'rgba(255,255,255,.9)');
+    iconEl.textContent = icon;
+    g.appendChild(iconEl);
+
+    // Node name
+    const nameEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    nameEl.setAttribute('class', 'node-label');
+    nameEl.setAttribute('x', x + 46); nameEl.setAttribute('y', y + 25);
+    nameEl.setAttribute('font-size', '12'); nameEl.setAttribute('font-weight', '600');
+    nameEl.setAttribute('fill', '#fff');
+    nameEl.textContent = truncate(node.name, 16);
+    g.appendChild(nameEl);
+
+    // Type label
+    const typeEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    typeEl.setAttribute('class', 'node-label');
+    typeEl.setAttribute('x', x + 46); typeEl.setAttribute('y', y + 42);
+    typeEl.setAttribute('font-size', '9'); typeEl.setAttribute('fill', 'rgba(255,255,255,.55)');
+    typeEl.textContent = nodeTypeShort(node.type);
+    g.appendChild(typeEl);
+
+    // Pending badge
+    if (hasPending) {
+      const badge = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      badge.setAttribute('cx', x + NODE_W - 8); badge.setAttribute('cy', y + 8);
+      badge.setAttribute('r', 5); badge.setAttribute('fill', 'var(--prompt)');
+      g.appendChild(badge);
+    }
+
+    // Input port
+    const inPort = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    inPort.setAttribute('cx', x); inPort.setAttribute('cy', y + NODE_H/2);
+    inPort.setAttribute('r', 4); inPort.setAttribute('fill', '#fff');
+    inPort.setAttribute('stroke', 'var(--border)'); inPort.setAttribute('stroke-width', '1.5');
+    g.appendChild(inPort);
+
+    // Output port(s)
+    const isIF = nodeTypeShort(node.type) === 'if';
+    const outPorts = isIF ? [NODE_H * 1/3, NODE_H * 2/3] : [NODE_H/2];
+    for (const oy of outPorts) {
+      const outPort = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      outPort.setAttribute('cx', x + NODE_W); outPort.setAttribute('cy', y + oy);
+      outPort.setAttribute('r', 4); outPort.setAttribute('fill', '#fff');
+      outPort.setAttribute('stroke', 'var(--border)'); outPort.setAttribute('stroke-width', '1.5');
+      g.appendChild(outPort);
+    }
+
+    g.addEventListener('click', () => selectNode(node.id));
+    root.appendChild(g);
+  }
+}
+
+function truncate(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+
+// ── Node selection & Editor ────────────────────────────────
+function selectNode(id) {
+  selectedNodeId = id;
+  document.querySelectorAll('.node-group').forEach(g => g.classList.remove('selected'));
+  const g = root.querySelector(`[data-id="${id}"]`);
+  if (g) g.classList.add('selected');
+  const node = workflowState.nodes.find(n => n.id === id);
+  if (node) renderEditor(node);
+}
+
+function closeEditor() {
+  selectedNodeId = null;
+  document.getElementById('node-editor').classList.remove('open');
+  document.querySelectorAll('.node-group').forEach(g => g.classList.remove('selected'));
+}
+
+function renderEditor(node) {
+  document.getElementById('editor-node-name').textContent = node.name;
+  document.getElementById('editor-node-type').textContent = node.type;
+  document.getElementById('node-editor').classList.add('open');
+
+  const body = document.getElementById('editor-body');
+  body.innerHTML = '';
+
+  // Security findings section (offline + AI)
+  const secResult = auditResults.get(node.id);
+  if (secResult) {
+    const sec = document.createElement('div');
+    sec.className = `sec-section ${secResult.level}`;
+    const title = document.createElement('div');
+    title.className = 'sec-section-title';
+    title.textContent = secResult.level === 'critical' ? '☠ Security — Critical Risk' : '⚠ Security — Warning';
+    sec.appendChild(title);
+    for (const risk of secResult.risks) {
+      const item = document.createElement('div');
+      item.className = 'sec-item';
+      item.textContent = risk.msg;
+      if (risk.vtUrl) {
+        const a = document.createElement('a');
+        a.href = risk.vtUrl; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = ' 🔍 VirusTotal'; a.style.marginLeft = '4px';
+        item.appendChild(a);
+      }
+      sec.appendChild(item);
+    }
+    if (secResult.aiReason) {
+      const item = document.createElement('div');
+      item.className = 'sec-item';
+      item.textContent = '🤖 AI: ' + secResult.aiReason;
+      sec.appendChild(item);
+    }
+    body.appendChild(sec);
+  }
+
+  for (const [key, rawVal] of Object.entries(node.parameters)) {
+    const val = String(rawVal);
+    const group = document.createElement('div');
+    group.className = 'param-group';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'param-label';
+    lbl.textContent = key;
+    group.appendChild(lbl);
+
+    if (val.startsWith('555-LOCKED-aes256:')) {
+      group.appendChild(buildLockedField(node, key, val));
+    } else if (val.startsWith('555-PROMPT:')) {
+      group.appendChild(buildPromptField(node, key, val));
+    } else {
+      const input = document.createElement('textarea');
+      input.className = 'param-input';
+      input.rows = val.length > 60 ? 3 : 1;
+      input.value = val;
+      input.addEventListener('input', () => setParam(node.id, key, input.value));
+      group.appendChild(input);
+    }
+
+    body.appendChild(group);
+  }
+
+  // Encrypt helper at bottom
+  body.appendChild(buildEncryptHelper(node));
+}
+
+function buildPromptField(node, key, val) {
+  const hint = val.slice('555-PROMPT:'.length);
+  const wrap = document.createElement('div');
+  wrap.className = 'param-prompt-wrap';
+  wrap.innerHTML = `<div class="param-prompt-header">${t('prompt_header')}</div>
+    <div class="param-prompt-hint">${esc(hint)}</div>`;
+  const input = document.createElement('textarea');
+  input.className = 'param-input';
+  input.rows = 1;
+  input.placeholder = t('value_placeholder');
+  input.style.marginTop = '4px';
+  input.addEventListener('input', () => {
+    setParam(node.id, key, input.value || val);
+    refreshNodeBadge(node.id);
+    updatePendingBadge();
+  });
+  wrap.appendChild(input);
+  return wrap;
+}
+
+function buildLockedField(node, key, val) {
+  const wrap = document.createElement('div');
+  wrap.className = 'param-locked-wrap';
+  const msg = document.createElement('div');
+  msg.className = 'param-locked-header';
+  msg.textContent = t('locked_header');
+  wrap.appendChild(msg);
+
+  const row = document.createElement('div');
+  row.className = 'decrypt-row';
+  const pwInput = document.createElement('input');
+  pwInput.type = 'password'; pwInput.placeholder = t('pw_placeholder');
+  const decBtn = document.createElement('button');
+  decBtn.className = 'btn'; decBtn.textContent = t('decrypt_btn');
+  row.appendChild(pwInput); row.appendChild(decBtn);
+  wrap.appendChild(row);
+
+  const result = document.createElement('div');
+  result.style.marginTop = '6px';
+  wrap.appendChild(result);
+
+  decBtn.addEventListener('click', async () => {
+    try {
+      const plain = await decryptValue(val, pwInput.value);
+      setParam(node.id, key, plain);
+      result.innerHTML = `<span style="color:var(--conn-true);font-size:11px">${t('decrypt_ok')}</span>`;
+      refreshNodeBadge(node.id);
+      updatePendingBadge();
+    } catch {
+      result.innerHTML = `<span style="color:var(--locked);font-size:11px">${t('decrypt_err')}</span>`;
+    }
+  });
+
+  return wrap;
+}
+
+function buildEncryptHelper(node) {
+  const section = document.createElement('div');
+  section.className = 'encrypt-section';
+  section.innerHTML = `<div class="encrypt-label">${t('encrypt_label')}</div>`;
+
+  const selRow = document.createElement('div');
+  selRow.className = 'encrypt-row';
+
+  const paramSel = document.createElement('select');
+  paramSel.className = 'param-input';
+  for (const k of Object.keys(node.parameters)) {
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = k;
+    paramSel.appendChild(opt);
+  }
+
+  const pwInput = document.createElement('input');
+  pwInput.type = 'password'; pwInput.placeholder = 'Heslo pro šifrování…';
+  pwInput.className = 'param-input';
+
+  const encBtn = document.createElement('button');
+  encBtn.className = 'btn'; encBtn.textContent = t('encrypt_btn');
+  encBtn.style.marginTop = '6px';
+
+  const resultEl = document.createElement('div');
+  resultEl.style.marginTop = '6px';
+
+  encBtn.addEventListener('click', async () => {
+    const key = paramSel.value;
+    const current = String(node.parameters[key]);
+    if (!pwInput.value) { resultEl.innerHTML = `<span style="color:var(--locked);font-size:11px">${t('encrypt_no_pw')}</span>`; return; }
+    if (current.startsWith('555-')) { resultEl.innerHTML = `<span style="color:var(--locked);font-size:11px">${t('encrypt_no_plain')}</span>`; return; }
+    try {
+      const locked = await encryptValue(current, pwInput.value);
+      setParam(node.id, key, locked);
+      resultEl.innerHTML = `<span style="color:var(--conn-true);font-size:11px">${t('encrypt_ok', key)}</span>`;
+      renderEditor(node); // re-render editor
+    } catch (e) {
+      resultEl.innerHTML = `<span style="color:var(--locked);font-size:11px">Chyba: ${e.message}</span>`;
+    }
+  });
+
+  selRow.appendChild(paramSel);
+  selRow.appendChild(pwInput);
+  selRow.appendChild(encBtn);
+  selRow.appendChild(resultEl);
+  section.appendChild(selRow);
+  return section;
+}
+
+// ── State management ───────────────────────────────────────
+function setParam(nodeId, key, value) {
+  const node = workflowState.nodes.find(n => n.id === nodeId);
+  if (node) node.parameters[key] = value;
+}
+
+function nodeHasPending(node) {
+  return Object.values(node.parameters).some(v => String(v).startsWith('555-'));
+}
+
+function countAllPending() {
+  return workflowState.nodes.filter(nodeHasPending).length;
+}
+
+function refreshNodeBadge(nodeId) {
+  const node = workflowState.nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  const g = root.querySelector(`[data-id="${nodeId}"]`);
+  if (!g) return;
+  const badge = g.querySelector('circle[fill="var(--prompt)"]');
+  if (nodeHasPending(node)) {
+    if (!badge) {
+      const [x, y] = node.position;
+      const b = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      b.setAttribute('cx', x + NODE_W - 8); b.setAttribute('cy', y + 8);
+      b.setAttribute('r', 5); b.setAttribute('fill', 'var(--prompt)');
+      g.appendChild(b);
+    }
+  } else {
+    if (badge) badge.remove();
+    const rect = g.querySelector('.node-rect');
+    if (rect) rect.setAttribute('stroke', 'rgba(255,255,255,.15)');
+  }
+}
+
+function updatePendingBadge() {
+  const n = countAllPending();
+  const el = document.getElementById('pending-badge');
+  if (n === 0) {
+    el.textContent = t('pending_none');
+    el.className = 'ok';
+  } else {
+    el.textContent = t('pending_some', n);
+    el.className = '';
+  }
+}
+
+// ── Copy to n8n ────────────────────────────────────────────
+function copyToN8n() {
+  const pending = workflowState.nodes.filter(nodeHasPending);
+  if (pending.length > 0) {
+    const names = pending.map(n => n.name).join(', ');
+    showToast(t('copy_pending', names), 'error');
+    return;
+  }
+  const json = JSON.stringify(workflowState, null, 2);
+  navigator.clipboard.writeText(json)
+    .then(() => showToast(t('copy_ok'), 'success'))
+    .catch(() => showToast(t('copy_err'), 'error'));
+}
+
+// ── Web Crypto — AES-256-GCM ───────────────────────────────
+// Format: 555-LOCKED-aes256:<base64(salt[16] + iv[12] + ciphertext)>
+async function getKey(password, salt, usage) {
+  const enc = new TextEncoder();
+  const raw = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    raw,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    [usage]
+  );
+}
+
+async function encryptValue(plaintext, password) {
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const key  = await getKey(password, salt, 'encrypt');
+  const ct   = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+  const packed = new Uint8Array(16 + 12 + ct.byteLength);
+  packed.set(salt, 0); packed.set(iv, 16); packed.set(new Uint8Array(ct), 28);
+  return '555-LOCKED-aes256:' + btoa(String.fromCharCode(...packed));
+}
+
+async function decryptValue(lockedStr, password) {
+  const b64  = lockedStr.replace('555-LOCKED-aes256:', '');
+  const packed = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const salt = packed.slice(0, 16);
+  const iv   = packed.slice(16, 28);
+  const ct   = packed.slice(28);
+  const key  = await getKey(password, salt, 'decrypt');
+  const dec  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return new TextDecoder().decode(dec);
+}
+
+// ── Security Scanner ───────────────────────────────────────
+const auditResults = new Map(); // nodeId → {level, risks:[{msg, vtUrl?}], aiReason?}
+
+function _maxLevel(a, b) { return ({safe:0,warning:1,critical:2}[a]||0) >= ({safe:0,warning:1,critical:2}[b]||0) ? a : b; }
+
+function _extractIPs(str) {
+  const out = [];
+  for (const m of str.matchAll(/\b(\d{1,3}\.){3}\d{1,3}\b/g)) {
+    const ip = m[0];
+    if (!ip.startsWith('127.') && !ip.startsWith('10.') && !ip.startsWith('192.168.') && !ip.startsWith('172.'))
+      out.push(ip);
+  }
+  return [...new Set(out)];
+}
+
+function scanNodeRisk(node) {
+  const risks = [];
+  const type = (node.type || '').toLowerCase();
+  const params = JSON.stringify(node.parameters || {});
+
+  // Execute Command / SSH — always critical
+  if (/executecommand/.test(type))
+    risks.push({ level: 'critical', msg: 'Executes OS commands directly on the server' });
+  if (/\bssh\b/.test(type))
+    risks.push({ level: 'critical', msg: 'SSH node — runs commands on a remote server' });
+
+  // Code / Function nodes
+  if (/\bcode\b|\bfunction\b/.test(type)) {
+    if (/\beval\s*\(/.test(params))
+      risks.push({ level: 'critical', msg: 'eval() — executes arbitrary dynamic code' });
+    if (/require\s*\(\s*["'`]child_process/.test(params))
+      risks.push({ level: 'critical', msg: 'child_process — can spawn OS subprocesses' });
+    if (/new\s+Function\s*\(/.test(params))
+      risks.push({ level: 'critical', msg: 'new Function() — dynamic code execution' });
+    if (/process\.env/.test(params))
+      risks.push({ level: 'warning', msg: 'process.env — reads env vars (possible credential leak)' });
+    if (/require\s*\(\s*["'`]fs["'`]/.test(params))
+      risks.push({ level: 'warning', msg: 'fs module — reads/writes files on the server' });
+    if (/[A-Za-z0-9+/]{80,}={0,2}/.test(params))
+      risks.push({ level: 'warning', msg: 'Large Base64 string — possible obfuscated payload' });
+    if (/\bfetch\s*\(|XMLHttpRequest|axios\./.test(params))
+      risks.push({ level: 'warning', msg: 'HTTP request in Code node — verify destination' });
+  }
+
+  // HTTP Request / Webhook — hardcoded IPs
+  for (const ip of _extractIPs(params)) {
+    risks.push({ level: 'warning', msg: `Hardcoded IP: ${ip}`, vtUrl: `https://www.virustotal.com/gui/search/${ip}` });
+  }
+
+  // .onion destinations
+  if (/\.onion[/"'`\s]/.test(params))
+    risks.push({ level: 'critical', msg: 'Tor .onion destination detected' });
+
+  const level = risks.reduce((a, r) => _maxLevel(a, r.level), 'safe');
+  return { level, risks };
+}
+
+function scanAllNodes() {
+  auditResults.clear();
+  for (const node of workflowState.nodes) {
+    const r = scanNodeRisk(node);
+    if (r.risks.length > 0) auditResults.set(node.id, r);
+  }
+  applyAuditOverlay();
+  _updateAuditBtn();
+  _renderAuditScanResults();
+}
+
+function applyAuditOverlay() {
+  // Clear old overlays
+  document.querySelectorAll('.audit-overlay').forEach(el => el.remove());
+  document.querySelectorAll('.node-group[data-audit]').forEach(g => {
+    g.removeAttribute('data-audit');
+    g.classList.remove('audit-warning', 'audit-critical');
+  });
+  for (const [nodeId, res] of auditResults) {
+    const g = root.querySelector(`.node-group[data-id="${CSS.escape(nodeId)}"]`);
+    if (!g) continue;
+    g.setAttribute('data-audit', res.level);
+    g.classList.add('audit-' + res.level);
+    // Badge icon top-right
+    const rect = g.querySelector('.node-rect');
+    if (!rect) continue;
+    const bx = parseFloat(rect.getAttribute('x') || 0) + parseFloat(rect.getAttribute('width') || 160) - 6;
+    const by = parseFloat(rect.getAttribute('y') || 0) + 15;
+    const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    badge.setAttribute('class', 'audit-overlay');
+    badge.setAttribute('x', bx); badge.setAttribute('y', by);
+    badge.setAttribute('text-anchor', 'end'); badge.setAttribute('font-size', '14');
+    badge.setAttribute('fill', res.level === 'critical' ? 'var(--locked)' : 'var(--amber)');
+    badge.textContent = res.level === 'critical' ? '☠' : '⚠';
+    g.appendChild(badge);
+  }
+}
+
+function _updateAuditBtn() {
+  let crit = 0, warn = 0;
+  for (const r of auditResults.values()) {
+    if (r.level === 'critical') crit++; else warn++;
+  }
+  const btn = document.getElementById('btn-audit');
+  if (crit > 0) {
+    btn.textContent = `☠ ${crit} critical`; btn.style.cssText = 'border-color:var(--locked);color:var(--locked)';
+  } else if (warn > 0) {
+    btn.textContent = `⚠ ${warn} warning`; btn.style.cssText = 'border-color:var(--amber);color:var(--amber)';
+  } else if (workflowState.nodes.length > 0) {
+    btn.textContent = '✓ Secure'; btn.style.cssText = 'border-color:#56d364;color:#56d364';
+  } else {
+    btn.textContent = '🔍 Audit'; btn.style.cssText = '';
+  }
+}
+
+function _renderAuditScanResults() {
+  const el = document.getElementById('audit-scan-results');
+  if (!el) return;
+  if (auditResults.size === 0) {
+    el.innerHTML = workflowState.nodes.length
+      ? '<p class="audit-empty">✓ No threats detected by offline scan.</p>'
+      : '<p class="audit-empty">Load a workflow to scan.</p>';
+    return;
+  }
+  let html = '<div class="audit-section-title">Offline Scan Results</div>';
+  for (const [nodeId, res] of auditResults) {
+    const node = workflowState.nodes.find(n => n.id === nodeId);
+    const name = node ? esc(node.name) : nodeId;
+    html += `<div class="audit-finding ${res.level}">
+      <div class="audit-finding-node" onclick="selectNode('${esc(nodeId)}');closeAuditPanel()">${res.level === 'critical' ? '☠' : '⚠'} ${name}</div>`;
+    for (const risk of res.risks) {
+      html += `<div class="audit-finding-msg">${esc(risk.msg)}`;
+      if (risk.vtUrl) html += ` <a class="audit-vt-link" href="${risk.vtUrl}" target="_blank" rel="noopener">🔍 VirusTotal</a>`;
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+// ── Audit Panel toggle ─────────────────────────────────────
+function toggleAuditPanel() {
+  document.getElementById('audit-panel').classList.toggle('open');
+}
+function closeAuditPanel() {
+  document.getElementById('audit-panel').classList.remove('open');
+}
+
+// ── AI Audit ───────────────────────────────────────────────
+async function runAiAudit() {
+  const endpoint = document.getElementById('audit-endpoint').value.trim();
+  const model    = document.getElementById('audit-model').value.trim() || 'gpt-4o-mini';
+  const apiKey   = document.getElementById('audit-key').value.trim();
+  if (!endpoint || !apiKey) { showToast('Enter endpoint and API key first', 'error'); return; }
+
+  // Extract risky-ish nodes (Code, HTTP, Execute, SSH, Webhook + any with 555- values)
+  const riskyTypes = /code|function|httprequest|webhook|executecommand|ssh/i;
+  const nodes = workflowState.nodes.filter(n =>
+    riskyTypes.test(n.type) || JSON.stringify(n.parameters||{}).includes('555-')
+  );
+  if (!nodes.length) { showToast('No risky node types found in workflow', ''); return; }
+
+  // Build compact payload (strip positions and metadata)
+  const payload = nodes.map(n => ({
+    id: n.id, name: n.name, type: n.type,
+    parameters: n.parameters || {}
+  }));
+
+  const btn = document.getElementById('btn-run-ai-audit');
+  btn.disabled = true; btn.textContent = '⏳ Analyzing…';
+  document.getElementById('audit-ai-results').innerHTML = '';
+
+  try {
+    const sysPrompt = `You are a security analyst reviewing n8n workflow nodes for malicious behavior.
+Analyze the provided nodes. Look for: data exfiltration, credential leakage, RCE vulnerabilities,
+obfuscated code (base64 payloads), suspicious network destinations, hardcoded secrets.
+Respond STRICTLY with a JSON array. Each element must have exactly these keys:
+"nodeId" (string), "level" ("safe","warning","critical"), "reason" (string, max 120 chars).
+Include ONLY nodes with findings. Omit safe nodes entirely.`;
+
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model, stream: false,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: sysPrompt },
+          { role: 'user',   content: JSON.stringify(payload) }
+        ]
+      })
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const raw = data.choices?.[0]?.message?.content || '[]';
+    // AI may return {"findings":[...]} or just [...]
+    let findings = JSON.parse(raw);
+    if (!Array.isArray(findings)) findings = Object.values(findings).find(Array.isArray) || [];
+
+    // Merge AI results into auditResults
+    for (const f of findings) {
+      const existing = auditResults.get(f.nodeId) || { level: 'safe', risks: [] };
+      existing.level = _maxLevel(existing.level, f.level);
+      existing.aiReason = f.reason;
+      auditResults.set(f.nodeId, existing);
+    }
+    applyAuditOverlay();
+    _updateAuditBtn();
+    _renderAuditScanResults();
+
+    // Show AI results block
+    const el = document.getElementById('audit-ai-results');
+    if (!findings.length) {
+      el.innerHTML = '<p class="audit-empty" style="margin-top:8px">✓ AI found no additional threats.</p>';
+    } else {
+      let html = '<div class="audit-section-title" style="margin-top:14px">AI Audit Results</div>';
+      for (const f of findings) {
+        const node = workflowState.nodes.find(n => n.id === f.nodeId);
+        const name = node ? esc(node.name) : f.nodeId;
+        html += `<div class="audit-finding ${f.level}">
+          <div class="audit-finding-node" onclick="selectNode('${esc(f.nodeId)}');closeAuditPanel()">${f.level === 'critical' ? '☠' : '⚠'} ${name}</div>
+          <div class="audit-finding-msg">${esc(f.reason)}</div></div>`;
+      }
+      el.innerHTML = html;
+    }
+    showToast(`✓ AI audit complete — ${findings.length} finding(s)`, 'success');
+  } catch (err) {
+    console.error('[PolyDoc] AI audit error:', err);
+    showToast('AI audit error: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '▶ Run AI Audit';
+  }
+}
+
+// ── Load JSON ──────────────────────────────────────────────
+function loadWorkflow(json) {
+  if (!json.nodes || !json.connections) {
+    showToast(t('load_err'), 'error');
+    return;
+  }
+  workflowState = JSON.parse(JSON.stringify(json));
+  closeEditor();
+  renderGraph();
+  fitView();
+  updatePendingBadge();
+  scanAllNodes();
+  const name = json.name || 'Workflow';
+  document.getElementById('doc-title').textContent = name;
+  document.title = 'PolyDoc — ' + name;
+  showToast(t('load_ok', name), 'success');
+}
+
+function parseWorkflowText(text) {
+  // Strip UTF-8 BOM if present (common in files created on Windows / some n8n exports)
+  const clean = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+  return JSON.parse(clean);
+}
+
+function loadJsonFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = ''; // reset so same file can be re-loaded
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      loadWorkflow(parseWorkflowText(e.target.result));
+    } catch (err) {
+      console.error('[PolyDoc] load error:', err);
+      showToast(t('load_parse_err') + ': ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ── Drag & drop ────────────────────────────────────────────
+(function initDragDrop() {
+  const wrap = document.getElementById('canvas-wrap');
+  wrap.addEventListener('dragover', e => {
+    if ([...e.dataTransfer.items].some(i => i.kind === 'file')) {
+      e.preventDefault();
+      wrap.classList.add('drag-over');
+    }
+  });
+  wrap.addEventListener('dragleave', e => {
+    if (!wrap.contains(e.relatedTarget)) wrap.classList.remove('drag-over');
+  });
+  wrap.addEventListener('drop', e => {
+    e.preventDefault();
+    wrap.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        loadWorkflow(parseWorkflowText(ev.target.result));
+      } catch (err) {
+        console.error('[PolyDoc] drop error:', err);
+        showToast(t('load_parse_err') + ': ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+})();
+
+// ── Load Markdown ──────────────────────────────────────────
+function loadMdFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const reader = new FileReader();
+  reader.onload = e => {
+    polyData.content.docs = e.target.result.replace(/^\uFEFF/, '');
+    // If currently in edit mode, sync the textarea too
+    if (document.getElementById('docs-editor').style.display !== 'none') {
+      document.getElementById('docs-editor').value = polyData.content.docs;
+    } else {
+      renderDocs();
+    }
+    showToast(t('load_md_ok'), 'success');
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ── Docs edit / view toggle ────────────────────────────────
+let _docsEditing = false;
+function toggleDocsEdit() {
+  const btn = document.getElementById('btn-docs-edit');
+  const content = document.getElementById('sidebar-content');
+  const editor = document.getElementById('docs-editor');
+  const label = document.getElementById('docs-mode-label');
+  _docsEditing = !_docsEditing;
+  if (_docsEditing) {
+    editor.value = polyData.content.docs || '';
+    content.style.display = 'none';
+    editor.style.display = 'block';
+    btn.classList.add('active');
+    btn.title = 'Lock — save and render';
+    btn.textContent = '🔒';
+    label.textContent = t('docs_edit');
+    editor.focus();
+  } else {
+    polyData.content.docs = editor.value;
+    editor.style.display = 'none';
+    content.style.display = '';
+    btn.classList.remove('active');
+    btn.title = 'Edit docs';
+    btn.textContent = '✏';
+    label.textContent = t('docs_view');
+    renderDocs();
+  }
+}
+
+// ── Sidebar resize ─────────────────────────────────────────
+(function initSidebarResize() {
+  const resizer = document.getElementById('sidebar-resizer');
+  const sidebar = document.getElementById('sidebar');
+  let startX, startW;
+  resizer.addEventListener('mousedown', e => {
+    startX = e.clientX;
+    startW = sidebar.offsetWidth;
+    resizer.classList.add('dragging');
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+  function onMove(e) {
+    sidebar.style.width = Math.max(160, Math.min(700, startW + e.clientX - startX)) + 'px';
+  }
+  function onUp() {
+    resizer.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+})();
+
+// ── Toast ──────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = type + ' show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.classList.remove('show'); }, 3500);
+}
+
+// ── Mermaid inline / drop ──────────────────────────────────
+const MERMAID_CDN = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+// Split marker strings so they don't appear literally and match the regex themselves
+const _MS = '<!-- polydoc:mermaid-' + 'start -->';
+const _ME = '<!-- polydoc:mermaid-' + 'end -->';
+const MERMAID_MARKER = new RegExp(_MS + '[\\s\\S]*?' + _ME);
+
+function getPageHtml() {
+  return '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+}
+
+function downloadHtml(html, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function saveFilename(suffix) {
+  const base = (workflowState.name || 'n8n-blueprint')
+    .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  return `${base}-${suffix}.html`;
+}
+
+async function integrateMermaid() {
+  const html = getPageHtml();
+  if (!MERMAID_MARKER.test(html)) { showToast(t('mermaid_no_marker'), 'error'); return; }
+  document.getElementById('btn-integrate').disabled = true;
+  showToast(t('mermaid_fetching'), '');
+  try {
+    const js = await fetch(MERMAID_CDN).then(r => {
+      if (!r.ok) throw new Error(r.status);
+      return r.text();
+    });
+    // Escape closing script tags in the JS bundle — minified code contains them
+    // and they would prematurely close the outer script tag in the saved HTML.
+    const safeJs = js.replace(/<\/script>/gi, '<\\/script>');
+    const inlined = _MS + `<script>/* mermaid@11 — inlined for offline use */${safeJs}<\/script>` + _ME;
+    downloadHtml(html.replace(MERMAID_MARKER, () => inlined), saveFilename('offline'));
+    showToast(t('mermaid_integrated'), 'success');
+  } catch (e) {
+    showToast(t('mermaid_fetch_err', e.message), 'error');
+  } finally {
+    document.getElementById('btn-integrate').disabled = false;
+  }
+}
+
+function dropMermaid() {
+  const html = getPageHtml();
+  if (!MERMAID_MARKER.test(html)) { showToast(t('mermaid_no_marker'), 'error'); return; }
+  const cdn = _MS + `<script src="${MERMAID_CDN}"><\/script>` + _ME;
+  downloadHtml(html.replace(MERMAID_MARKER, () => cdn), saveFilename('lean'));
+  showToast(t('mermaid_dropped'), 'success');
+}
+
+function saveBlueprint() {
+  const html = getPageHtml();
+  // Build updated poly+json with current workflow state baked in
+  const updated = JSON.parse(JSON.stringify(polyData));
+  updated.content.n8n_data = workflowState;
+  // Escape closing-script-tag sequences in the JSON to avoid breaking the outer script block
+  const updatedJson = JSON.stringify(updated, null, 2)
+    .replace(/<\/script>/gi, '<\\/script>');
+  const POLY_BLOCK = /(<script\s+type="application\/poly\+json">)[\s\S]*?(<\/script>)/;
+  if (!POLY_BLOCK.test(html)) { showToast(t('save_err'), 'error'); return; }
+  const saved = html.replace(POLY_BLOCK, (_, open, close) =>
+    open + '\n' + updatedJson + '\n' + close
+  );
+  const name = workflowState.name || 'n8n-blueprint';
+  downloadHtml(saved, saveFilename('blueprint'));
+  showToast(t('save_ok', name), 'success');
+}
+</script>
+</body>
+</html>
