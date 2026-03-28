@@ -1107,7 +1107,10 @@ async function integrateMermaid() {
       if (!r.ok) throw new Error(r.status);
       return r.text();
     });
-    const inlined = `<!-- polydoc:mermaid-start --><script>/* mermaid@11 — inlined for offline use */${js}<\/script><!-- polydoc:mermaid-end -->`;
+    // Escape </script> occurrences in the JS bundle — minified code contains them
+    // and they would prematurely close the <script> tag in the saved HTML.
+    const safeJs = js.replace(/<\/script>/gi, '<\\/script>');
+    const inlined = `<!-- polydoc:mermaid-start --><script>/* mermaid@11 — inlined for offline use */${safeJs}<\/script><!-- polydoc:mermaid-end -->`;
     downloadHtml(html.replace(MERMAID_MARKER, inlined), saveFilename('offline'));
     showToast(t('mermaid_integrated'), 'success');
   } catch (e) {
