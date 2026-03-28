@@ -200,6 +200,7 @@
   <span id="pending-badge">…</span>
   <input type="file" id="json-file-input" accept=".json,application/json" style="display:none" onchange="loadJsonFile(this)">
   <button class="btn" id="btn-load" onclick="document.getElementById('json-file-input').click()" title="Load n8n workflow JSON export">📂 Load JSON</button>
+  <button class="btn" id="btn-save" onclick="saveBlueprint()" title="Save current workflow state into a new Blueprint HTML file">💾 Save Blueprint</button>
   <button class="btn" onclick="fitView()">⊡ Fit</button>
   <button class="btn" id="btn-integrate" onclick="integrateMermaid()" title="Fetch Mermaid from CDN and save a fully offline copy">⬇ Offline</button>
   <button class="btn" id="btn-drop" onclick="dropMermaid()" title="Remove inlined Mermaid, revert to CDN link">✂ Lean</button>
@@ -460,6 +461,9 @@ const STRINGS = {
     load_err:          'Not a valid n8n workflow JSON (missing nodes/connections)',
     load_parse_err:    'JSON parse error',
     drop_hint:         'Drop n8n workflow JSON here',
+    save_btn:          '💾 Save Blueprint',
+    save_ok:           name => `✓ Saved: ${name}`,
+    save_err:          'poly+json block not found — was the file modified?',
   },
   cs: {
     copy_btn:          'Kopírovat pro n8n',
@@ -491,6 +495,9 @@ const STRINGS = {
     load_err:          'Neplatný n8n workflow JSON (chybí nodes/connections)',
     load_parse_err:    'Chyba parsování JSON',
     drop_hint:         'Přetáhni n8n workflow JSON sem',
+    save_btn:          '💾 Uložit Blueprint',
+    save_ok:           name => `✓ Uloženo: ${name}`,
+    save_err:          'poly+json blok nenalezen — byl soubor upraven?',
   },
 };
 
@@ -1223,6 +1230,24 @@ function dropMermaid() {
   const cdn = _MS + `<script src="${MERMAID_CDN}"><\/script>` + _ME;
   downloadHtml(html.replace(MERMAID_MARKER, () => cdn), saveFilename('lean'));
   showToast(t('mermaid_dropped'), 'success');
+}
+
+function saveBlueprint() {
+  const html = getPageHtml();
+  // Build updated poly+json with current workflow state baked in
+  const updated = JSON.parse(JSON.stringify(polyData));
+  updated.content.n8n_data = workflowState;
+  // Escape </script> sequences so they don't break the HTML script tag
+  const updatedJson = JSON.stringify(updated, null, 2)
+    .replace(/<\/script>/gi, '<\\/script>');
+  const POLY_BLOCK = /(<script\s+type="application\/poly\+json">)[\s\S]*?(<\/script>)/;
+  if (!POLY_BLOCK.test(html)) { showToast(t('save_err'), 'error'); return; }
+  const saved = html.replace(POLY_BLOCK, (_, open, close) =>
+    open + '\n' + updatedJson + '\n' + close
+  );
+  const name = workflowState.name || 'n8n-blueprint';
+  downloadHtml(saved, saveFilename('blueprint'));
+  showToast(t('save_ok', name), 'success');
 }
 </script>
 </body>
