@@ -1202,7 +1202,7 @@ async function integrateMermaid() {
     // and they would prematurely close the outer script tag in the saved HTML.
     const safeJs = js.replace(/<\/script>/gi, '<\\/script>');
     const inlined = _MS + `<script>/* mermaid@11 — inlined for offline use */${safeJs}<\/script>` + _ME;
-    downloadHtml(html.replace(MERMAID_MARKER, inlined), saveFilename('offline'));
+    downloadHtml(html.replace(MERMAID_MARKER, () => inlined), saveFilename('offline'));
     showToast(t('mermaid_integrated'), 'success');
   } catch (e) {
     showToast(t('mermaid_fetch_err', e.message), 'error');
@@ -1215,7 +1215,7 @@ function dropMermaid() {
   const html = getPageHtml();
   if (!MERMAID_MARKER.test(html)) { showToast(t('mermaid_no_marker'), 'error'); return; }
   const cdn = _MS + `<script src="${MERMAID_CDN}"><\/script>` + _ME;
-  downloadHtml(html.replace(MERMAID_MARKER, cdn), saveFilename('lean'));
+  downloadHtml(html.replace(MERMAID_MARKER, () => cdn), saveFilename('lean'));
   showToast(t('mermaid_dropped'), 'success');
 }
 </script>
