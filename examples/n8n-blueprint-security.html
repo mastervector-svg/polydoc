@@ -984,7 +984,7 @@ function renderNodes() {
       const rbadge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       rbadge.setAttribute('class', 'node-label');
       rbadge.setAttribute('x', x + NODE_W - 4);
-      rbadge.setAttribute('y', y + hasPending ? 26 : 14);
+      rbadge.setAttribute('y', y + (hasPending ? 26 : 14));
       rbadge.setAttribute('text-anchor', 'end');
       rbadge.setAttribute('font-size', '13');
       rbadge.setAttribute('fill', risk.level === 3 ? 'var(--locked)' : 'var(--amber)');
@@ -1427,10 +1427,7 @@ const _TYPE_LEVEL = [
   // 2 — Warning: local code/file execution
   [2, /\bcode\b|\bfunction\b|readbinaryfile|writebinaryfile|\bftp\b/],
   // 1 — Info: network / data egress
-  [1, /httprequest|webhook|gmail|sendmail|smtp|mailgun|slack|telegram|discord|msteams|
-       postgres|mysql|mongodb|redis|supabase|airtable|googlesheets|notion|
-       s3|googledrive|dropbox|onedrive|sftp|stripe|twilio|whatsapp|apify|
-       openai|anthropic|huggingface|replicate/x],
+  [1, /httprequest|webhook|gmail|sendmail|smtp|mailgun|slack|telegram|discord|msteams|postgres|mysql|mongodb|redis|supabase|airtable|googlesheets|notion|s3|googledrive|dropbox|onedrive|sftp|stripe|twilio|whatsapp|apify|openai|anthropic|huggingface|replicate|googledrive|calendar/],
 ];
 
 function _typeLevel(type) {
