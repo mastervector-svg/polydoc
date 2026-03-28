@@ -44,6 +44,7 @@ Click the button → full interactive version loads on your server.
 | **IoT: Sensor telemetry** — log file that renders itself as a dashboard | [iot-sensor-telemetry.html](https://mastervector-svg.github.io/polydoc/examples/iot-sensor-telemetry.html) |
 | **IoT: Device passport** — identity, API spec, warranty, manufacturer signature | [device-passport.html](https://mastervector-svg.github.io/polydoc/examples/device-passport.html) |
 | **n8n Blueprint** — share workflows safely: encrypted credentials, visual node map, one-click import | [n8n-blueprint.html](https://mastervector-svg.github.io/polydoc/examples/n8n-blueprint.html) |
+| **n8n Blueprint Security** — everything above + offline security scanner, severity heat map, egress arrows, AI audit | [n8n-blueprint-security.html](https://mastervector-svg.github.io/polydoc/examples/n8n-blueprint-security.html) |
 
 ---
 
@@ -251,6 +252,46 @@ flowchart TD
 Zero dependencies. Works offline. MIT.
 
 [→ Live demo](https://mastervector-svg.github.io/polydoc/examples/n8n-blueprint.html)
+
+#### Security Scanner variant — audit before you import
+
+Before copying a workflow into your n8n instance, you want to know: *does this Code node call home? Is there a hardcoded IP? Does anything phone out to a service I don't recognise?*
+
+The **Security Blueprint** adds a zero-click audit layer on top of the standard Blueprint:
+
+**Severity heat map** — every node gets a risk level assigned at render time, no second pass needed:
+
+| Level | Visual | Triggered by |
+|-------|--------|-------------|
+| 0 Safe | default ring | If, Switch, Set, Merge… |
+| 1 Info | blue ring | HTTP Request, Webhook, Gmail, Postgres, Slack, S3, OpenAI… |
+| 2 Warning | amber ring + ⚠ | Code node, `process.env`, `fs` module, large Base64 blob, hardcoded IP |
+| 3 Critical | red ring + ☠ + pulse | Execute Command, SSH, `eval()`, `child_process`, plaintext private key, `.onion` |
+
+**Egress arrows** — for every Info/Warning/Critical node, a dashed arrow extends from the output port to the right of the canvas, labelled with the actual destination:
+
+```
+[HTTP Request] --------⟶  → api.openai.com
+[Gmail node]   --------⟶  → Email
+[Code + fetch] --------⟶  → HTTP         (amber, node is Warning)
+[Exec Command] --------⟶  → External     (red, pulsing)
+```
+
+The moment you load a workflow you get a visual map of *every place data leaves your infrastructure*, colour-coded by how dangerous it is. No clicking required.
+
+**AI Audit** — the Audit panel (🔍 button) lets you point the scanner at any OpenAI-compatible API (OpenAI, local Ollama, Anthropic via proxy). It extracts only the risky nodes, sends a compact payload, and asks the model for a structured JSON verdict. Results are merged back into the heat map and the per-node editor panel.
+
+```
+[Run AI Audit]
+  → extracts Code/HTTP/SSH/Execute nodes
+  → sends to LLM: "find exfiltration, RCE, hardcoded secrets, respond as JSON array"
+  → {"nodeId":"...", "level":"critical", "reason":"sends process.env to external IP"}
+  → SVG updates: node ring turns red, pulse starts
+  → click node → editor shows AI reason
+```
+
+[→ Security Blueprint demo](https://mastervector-svg.github.io/polydoc/examples/n8n-blueprint-security.html)
+[→ Full documentation](docs/N8N_BLUEPRINT_SECURITY.md)
 
 ### 7. IoT & Embedded Devices — the killer use case
 
@@ -601,6 +642,7 @@ docker run -p 3000:3000 -e LLM_BASE_URL -e LLM_API_KEY -e LLM_MODEL \
 - [x] Export lock with per-user watermark
 - [x] Full English translation of all spec files
 - [x] **n8n Blueprint** — workflow sharing with 555- security protocol, SVG node map, Mermaid docs, Copy to n8n, offline mode
+- [x] **n8n Blueprint Security** — offline security scanner, 4-level severity heat map, egress arrows, AI audit (OpenAI-compatible)
 - [ ] Shared interpreter on CDN (`poly-interpreter.js`)
 - [ ] SubtleCrypto signature verification (browser)
 - [ ] `npx polydoc render invoice.json` CLI
