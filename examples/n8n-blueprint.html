@@ -703,20 +703,20 @@ function renderConnections() {
   for (const [fromName, outputs] of Object.entries(conns)) {
     const fromNode = nodeMap[fromName];
     if (!fromNode) continue;
-    const [fx, fy] = fromNode.position;
+    const [fx, fy] = fromNode.position || [0, 0];
 
     const isIF = nodeTypeShort(fromNode.type) === 'if';
 
-    outputs.main.forEach((portTargets, portIndex) => {
+    (outputs.main || []).forEach((portTargets, portIndex) => {
       const color = isIF ? (portIndex === 0 ? 'var(--conn-true)' : 'var(--conn-false)') : 'var(--conn)';
       const markerId = isIF ? (portIndex === 0 ? 'arr-true' : 'arr-false') : 'arr';
-      const portCount = outputs.main.length;
+      const portCount = (outputs.main || []).length;
       const portOffsetY = portCount === 1 ? NODE_H / 2 : NODE_H * (portIndex + 1) / (portCount + 1);
 
       for (const target of portTargets) {
         const toNode = nodeMap[target.node];
         if (!toNode) continue;
-        const [tx, ty] = toNode.position;
+        const [tx, ty] = toNode.position || [0, 0];
 
         const x1 = fx + NODE_W, y1 = fy + portOffsetY;
         const x2 = tx,          y2 = ty + NODE_H / 2;
@@ -752,7 +752,7 @@ function renderNodes() {
     g.setAttribute('class', 'node-group');
     g.setAttribute('data-id', node.id);
 
-    const [x, y] = node.position;
+    const [x, y] = node.position || [0, 0];
     const color = nodeColor(node.type);
     const icon = nodeIcon(node.type);
     const hasPending = nodeHasPending(node);
@@ -1130,8 +1130,9 @@ function loadJsonFile(input) {
   reader.onload = e => {
     try {
       loadWorkflow(parseWorkflowText(e.target.result));
-    } catch {
-      showToast(t('load_parse_err'), 'error');
+    } catch (err) {
+      console.error('[PolyDoc] load error:', err);
+      showToast(t('load_parse_err') + ': ' + err.message, 'error');
     }
   };
   reader.readAsText(file, 'UTF-8');
@@ -1158,8 +1159,9 @@ function loadJsonFile(input) {
     reader.onload = ev => {
       try {
         loadWorkflow(parseWorkflowText(ev.target.result));
-      } catch {
-        showToast(t('load_parse_err'), 'error');
+      } catch (err) {
+        console.error('[PolyDoc] drop error:', err);
+        showToast(t('load_parse_err') + ': ' + err.message, 'error');
       }
     };
     reader.readAsText(file, 'UTF-8');
@@ -1237,7 +1239,7 @@ function saveBlueprint() {
   // Build updated poly+json with current workflow state baked in
   const updated = JSON.parse(JSON.stringify(polyData));
   updated.content.n8n_data = workflowState;
-  // Escape </script> sequences so they don't break the HTML script tag
+  // Escape closing-script-tag sequences in the JSON to avoid breaking the outer script block
   const updatedJson = JSON.stringify(updated, null, 2)
     .replace(/<\/script>/gi, '<\\/script>');
   const POLY_BLOCK = /(<script\s+type="application\/poly\+json">)[\s\S]*?(<\/script>)/;
