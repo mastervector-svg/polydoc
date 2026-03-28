@@ -1109,6 +1109,12 @@ function loadWorkflow(json) {
   showToast(t('load_ok', name), 'success');
 }
 
+function parseWorkflowText(text) {
+  // Strip UTF-8 BOM if present (common in files created on Windows / some n8n exports)
+  const clean = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+  return JSON.parse(clean);
+}
+
 function loadJsonFile(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1116,12 +1122,12 @@ function loadJsonFile(input) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      loadWorkflow(JSON.parse(e.target.result));
+      loadWorkflow(parseWorkflowText(e.target.result));
     } catch {
       showToast(t('load_parse_err'), 'error');
     }
   };
-  reader.readAsText(file);
+  reader.readAsText(file, 'UTF-8');
 }
 
 // ── Drag & drop ────────────────────────────────────────────
@@ -1144,12 +1150,12 @@ function loadJsonFile(input) {
     const reader = new FileReader();
     reader.onload = ev => {
       try {
-        loadWorkflow(JSON.parse(ev.target.result));
+        loadWorkflow(parseWorkflowText(ev.target.result));
       } catch {
         showToast(t('load_parse_err'), 'error');
       }
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
   });
 })();
 
