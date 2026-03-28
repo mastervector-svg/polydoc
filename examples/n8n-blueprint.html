@@ -1165,7 +1165,10 @@ function showToast(msg, type = '') {
 
 // ── Mermaid inline / drop ──────────────────────────────────
 const MERMAID_CDN = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
-const MERMAID_MARKER = /<!-- polydoc:mermaid-start -->[\s\S]*?<!-- polydoc:mermaid-end -->/;
+// Split marker strings so they don't appear literally and match the regex themselves
+const _MS = '<!-- polydoc:mermaid-' + 'start -->';
+const _ME = '<!-- polydoc:mermaid-' + 'end -->';
+const MERMAID_MARKER = new RegExp(_MS + '[\\s\\S]*?' + _ME);
 
 function getPageHtml() {
   return '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
@@ -1198,7 +1201,7 @@ async function integrateMermaid() {
     // Escape closing script tags in the JS bundle — minified code contains them
     // and they would prematurely close the outer script tag in the saved HTML.
     const safeJs = js.replace(/<\/script>/gi, '<\\/script>');
-    const inlined = `<!-- polydoc:mermaid-start --><script>/* mermaid@11 — inlined for offline use */${safeJs}<\/script><!-- polydoc:mermaid-end -->`;
+    const inlined = _MS + `<script>/* mermaid@11 — inlined for offline use */${safeJs}<\/script>` + _ME;
     downloadHtml(html.replace(MERMAID_MARKER, inlined), saveFilename('offline'));
     showToast(t('mermaid_integrated'), 'success');
   } catch (e) {
@@ -1211,7 +1214,7 @@ async function integrateMermaid() {
 function dropMermaid() {
   const html = getPageHtml();
   if (!MERMAID_MARKER.test(html)) { showToast(t('mermaid_no_marker'), 'error'); return; }
-  const cdn = `<!-- polydoc:mermaid-start --><script src="${MERMAID_CDN}"><\/script><!-- polydoc:mermaid-end -->`;
+  const cdn = _MS + `<script src="${MERMAID_CDN}"><\/script>` + _ME;
   downloadHtml(html.replace(MERMAID_MARKER, cdn), saveFilename('lean'));
   showToast(t('mermaid_dropped'), 'success');
 }
