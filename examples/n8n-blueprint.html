@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PolyDoc — n8n Blueprint</title>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <!-- polydoc:mermaid-start --><script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script><!-- polydoc:mermaid-end -->
   <style>
     :root {
       --bg: #0d1117;
@@ -187,6 +187,8 @@
   <span id="doc-meta"></span>
   <span id="pending-badge">…</span>
   <button class="btn" onclick="fitView()">⊡ Fit</button>
+  <button class="btn" id="btn-integrate" onclick="integrateMermaid()" title="Fetch Mermaid from CDN and save a fully offline copy">⬇ Offline</button>
+  <button class="btn" id="btn-drop" onclick="dropMermaid()" title="Remove inlined Mermaid, revert to CDN link">✂ Lean</button>
   <button class="btn btn-primary" id="btn-copy" onclick="copyToN8n()">📋 Copy to n8n</button>
 </div>
 
@@ -433,6 +435,11 @@ const STRINGS = {
     copy_pending:      names => `⚠ Fill in first: ${names}`,
     copy_err:          'Error: clipboard unavailable (HTTPS required)',
     node_default:      'Node',
+    mermaid_fetching:  '⬇ Fetching Mermaid from CDN…',
+    mermaid_integrated:'✓ Mermaid inlined — offline file downloaded',
+    mermaid_dropped:   '✓ CDN version saved',
+    mermaid_no_marker: 'Marker not found — was the file modified?',
+    mermaid_fetch_err: e => `Fetch error: ${e}`,
   },
   cs: {
     copy_btn:          'Kopírovat pro n8n',
@@ -454,6 +461,11 @@ const STRINGS = {
     copy_pending:      names => `⚠ Nevyplněno: ${names}`,
     copy_err:          'Chyba: clipboard nedostupný (HTTPS required)',
     node_default:      'Uzel',
+    mermaid_fetching:  '⬇ Stahuji Mermaid z CDN…',
+    mermaid_integrated:'✓ Mermaid vložen — offline soubor stažen',
+    mermaid_dropped:   '✓ CDN verze uložena',
+    mermaid_no_marker: 'Marker nenalezen — byl soubor upraven?',
+    mermaid_fetch_err: e => `Chyba stahování: ${e}`,
   },
 };
 
@@ -1061,6 +1073,56 @@ function showToast(msg, type = '') {
   el.className = type + ' show';
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.classList.remove('show'); }, 3500);
+}
+
+// ── Mermaid inline / drop ──────────────────────────────────
+const MERMAID_CDN = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+const MERMAID_MARKER = /<!-- polydoc:mermaid-start -->[\s\S]*?<!-- polydoc:mermaid-end -->/;
+
+function getPageHtml() {
+  return '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+}
+
+function downloadHtml(html, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function saveFilename(suffix) {
+  const base = (workflowState.name || 'n8n-blueprint')
+    .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  return `${base}-${suffix}.html`;
+}
+
+async function integrateMermaid() {
+  const html = getPageHtml();
+  if (!MERMAID_MARKER.test(html)) { showToast(t('mermaid_no_marker'), 'error'); return; }
+  document.getElementById('btn-integrate').disabled = true;
+  showToast(t('mermaid_fetching'), '');
+  try {
+    const js = await fetch(MERMAID_CDN).then(r => {
+      if (!r.ok) throw new Error(r.status);
+      return r.text();
+    });
+    const inlined = `<!-- polydoc:mermaid-start --><script>/* mermaid@11 — inlined for offline use */${js}<\/script><!-- polydoc:mermaid-end -->`;
+    downloadHtml(html.replace(MERMAID_MARKER, inlined), saveFilename('offline'));
+    showToast(t('mermaid_integrated'), 'success');
+  } catch (e) {
+    showToast(t('mermaid_fetch_err', e.message), 'error');
+  } finally {
+    document.getElementById('btn-integrate').disabled = false;
+  }
+}
+
+function dropMermaid() {
+  const html = getPageHtml();
+  if (!MERMAID_MARKER.test(html)) { showToast(t('mermaid_no_marker'), 'error'); return; }
+  const cdn = `<!-- polydoc:mermaid-start --><script src="${MERMAID_CDN}"><\/script><!-- polydoc:mermaid-end -->`;
+  downloadHtml(html.replace(MERMAID_MARKER, cdn), saveFilename('lean'));
+  showToast(t('mermaid_dropped'), 'success');
 }
 </script>
 </body>
