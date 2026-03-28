@@ -187,7 +187,7 @@
   <span id="doc-meta"></span>
   <span id="pending-badge">…</span>
   <button class="btn" onclick="fitView()">⊡ Fit</button>
-  <button class="btn btn-primary" onclick="copyToN8n()">📋 Kopírovat pro n8n</button>
+  <button class="btn btn-primary" id="btn-copy" onclick="copyToN8n()">📋 Copy to n8n</button>
 </div>
 
 <div id="layout">
@@ -238,12 +238,13 @@
   "poly": {
     "version": "1.0",
     "type": "n8n-blueprint",
+    "lang": "en",
     "security": {
       "_note": "DEMO ONLY. PolyDoc defines the 555- protocol format. Key management is outside PolyDoc scope."
     }
   },
   "content": {
-    "docs": "# Customer Onboarding\n\nAutomatický workflow pro zpracování nových zákazníků z webového formuláře.\n\n## Průběh zpracování\n\n```mermaid\nflowchart TD\n    A([Webhook]) --> B[Normalize Data]\n    B --> C[Verify Email]\n    C --> D{Valid Email?}\n    D -- true --> E[(Save to DB)]\n    D -- true --> F[/Send Welcome Email/]\n    D -- false --> G[Log Invalid Email]\n```\n\n## Co dělá\n\n- Přijme data z webhooků registračního formuláře\n- Normalizuje vstupní data (lowercase email, trim)\n- Ověří email přes externí API\n- Uloží zákazníka do databáze\n- Odešle uvítací email\n\n## Prerekvizity\n\n- **n8n** >= 1.0, selfhosted nebo cloud\n- **PostgreSQL** — tabulka `customers` musí existovat (viz SQL níže)\n- **Email API klíč** — emailvalidation.io nebo Hunter.io\n- **SMTP server** — pro odesílání uvítacích emailů\n\n## SQL setup\n\n```sql\nCREATE TABLE customers (\n  id SERIAL PRIMARY KEY,\n  email TEXT UNIQUE NOT NULL,\n  name TEXT,\n  created_at TIMESTAMPTZ DEFAULT NOW()\n);\n```\n\n## Konfigurace\n\nKlikni na uzel na plátně a vyplň parametry označené **⚠ PROMPT**.\n\n## Parametry k vyplnění\n\n- `Verify Email` — API klíč emailvalidation.io\n- `Save to DB` — host, user, heslo k PostgreSQL\n- `Send Welcome Email` — SMTP přihlašovací údaje",
+    "docs": "# Customer Onboarding\n\nAutomated workflow for processing new customer sign-ups from a web form.\n\n## Flow\n\n```mermaid\nflowchart TD\n    A([Webhook]) --> B[Normalize Data]\n    B --> C[Verify Email]\n    C --> D{Valid Email?}\n    D -- true --> E[(Save to DB)]\n    D -- true --> F[/Send Welcome Email/]\n    D -- false --> G[Log Invalid Email]\n```\n\n## What it does\n\n- Receives sign-up data via webhook\n- Normalises input (lowercase email, trim whitespace)\n- Verifies email address via external API\n- Inserts customer record into PostgreSQL\n- Sends a welcome email via SMTP\n\n## Prerequisites\n\n- **n8n** >= 1.0, self-hosted or cloud\n- **PostgreSQL** — `customers` table must exist (see SQL below)\n- **Email validation API key** — emailvalidation.io or Hunter.io\n- **SMTP server** — for sending welcome emails\n\n## SQL setup\n\n```sql\nCREATE TABLE customers (\n  id SERIAL PRIMARY KEY,\n  email TEXT UNIQUE NOT NULL,\n  name TEXT,\n  created_at TIMESTAMPTZ DEFAULT NOW()\n);\n```\n\n## Configuration\n\nClick any node on the canvas and fill in parameters marked **⚠ FILL IN**.\n\n## Parameters to fill in\n\n- `Verify Email` — emailvalidation.io API key\n- `Save to DB` — PostgreSQL host, user, password\n- `Send Welcome Email` — SMTP credentials",
     "n8n_data": {
       "name": "Customer Onboarding",
       "nodes": [
@@ -282,7 +283,7 @@
             "url": "https://api.emailvalidation.io/v1/info",
             "method": "GET",
             "queryParameters": "={{ 'email=' + $json.email }}",
-            "apiKey": "555-PROMPT:Zadejte API klíč pro ověření emailů (emailvalidation.io nebo Hunter.io)"
+            "apiKey": "555-PROMPT:Enter your email validation API key (emailvalidation.io or Hunter.io)"
           }
         },
         {
@@ -304,11 +305,11 @@
           "typeVersion": 2,
           "position": [1120, 140],
           "parameters": {
-            "host": "555-PROMPT:Hostname PostgreSQL (např. 10.119.253.21)",
+            "host": "555-PROMPT:PostgreSQL hostname (e.g. 10.119.253.21)",
             "port": 5434,
             "database": "clients",
-            "user": "555-PROMPT:DB uživatelské jméno",
-            "password": "555-PROMPT:DB heslo (nebo použij Encrypt níže pro AES uložení)",
+            "user": "555-PROMPT:Database username",
+            "password": "555-PROMPT:Database password (or use Encrypt below to store as AES)",
             "query": "INSERT INTO customers (email, name) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING",
             "ssl": false
           }
@@ -324,10 +325,10 @@
             "toEmail": "={{ $('Normalize Data').item.json.email }}",
             "subject": "Vítejte!",
             "text": "Dobrý den {{ $('Normalize Data').item.json.name }}, vítejte v systému.",
-            "smtpHost": "555-PROMPT:SMTP hostname (např. smtp.gmail.com)",
+            "smtpHost": "555-PROMPT:SMTP hostname (e.g. smtp.gmail.com)",
             "smtpPort": 587,
-            "smtpUser": "555-PROMPT:SMTP přihlašovací email",
-            "smtpPassword": "555-PROMPT:SMTP heslo nebo App Password"
+            "smtpUser": "555-PROMPT:SMTP login email",
+            "smtpPassword": "555-PROMPT:SMTP password or App Password"
           }
         },
         {
@@ -410,12 +411,69 @@ function nodeIcon(type) {
   return TYPE_ICONS[nodeTypeShort(type)] || '●';
 }
 
+// ── i18n ───────────────────────────────────────────────────
+const STRINGS = {
+  en: {
+    copy_btn:          'Copy to n8n',
+    pending_none:      '✓ Ready to copy',
+    pending_some:      n => `⚠ ${n} node${n > 1 ? 's' : ''} need input`,
+    prompt_header:     '⚠ FILL IN',
+    locked_header:     '🔒 ENCRYPTED — enter password to decrypt',
+    decrypt_btn:       'Decrypt',
+    decrypt_ok:        '✓ Decrypted — value saved',
+    decrypt_err:       '✗ Wrong password or corrupted data',
+    encrypt_label:     '🔐 Encrypt a value to 555-LOCKED-aes256',
+    encrypt_btn:       'Encrypt',
+    encrypt_ok:        k => `✓ Parameter "${k}" encrypted`,
+    encrypt_no_pw:     'Enter a password',
+    encrypt_no_plain:  'Select a parameter with a plaintext value',
+    pw_placeholder:    'Password…',
+    value_placeholder: 'Enter value…',
+    copy_ok:           '✓ Copied! Go to n8n and press Ctrl+V',
+    copy_pending:      names => `⚠ Fill in first: ${names}`,
+    copy_err:          'Error: clipboard unavailable (HTTPS required)',
+    node_default:      'Node',
+  },
+  cs: {
+    copy_btn:          'Kopírovat pro n8n',
+    pending_none:      '✓ Připraveno ke kopírování',
+    pending_some:      n => `⚠ ${n} uzel${n > 1 ? (n < 5 ? 'y' : 'ů') : ''} čeká na vyplnění`,
+    prompt_header:     '⚠ VYPLNIT',
+    locked_header:     '🔒 ŠIFROVÁNO — zadejte heslo pro dešifrování',
+    decrypt_btn:       'Dešifrovat',
+    decrypt_ok:        '✓ Dešifrováno — hodnota uložena',
+    decrypt_err:       '✗ Špatné heslo nebo poškozená data',
+    encrypt_label:     '🔐 Zašifrovat hodnotu do 555-LOCKED-aes256',
+    encrypt_btn:       'Zašifrovat',
+    encrypt_ok:        k => `✓ Parametr "${k}" zašifrován`,
+    encrypt_no_pw:     'Zadejte heslo',
+    encrypt_no_plain:  'Vyberte parametr s plaintext hodnotou',
+    pw_placeholder:    'Heslo…',
+    value_placeholder: 'Zadejte hodnotu…',
+    copy_ok:           '✓ Zkopírováno! Jdi do n8n a stiskni Ctrl+V',
+    copy_pending:      names => `⚠ Nevyplněno: ${names}`,
+    copy_err:          'Chyba: clipboard nedostupný (HTTPS required)',
+    node_default:      'Uzel',
+  },
+};
+
+let _lang = 'en';
+function initLang(lang) { _lang = STRINGS[lang] ? lang : 'en'; }
+function t(key, ...args) {
+  const v = STRINGS[_lang][key];
+  return typeof v === 'function' ? v(...args) : v;
+}
+
 // ── Bootstrap ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const dataEl = document.querySelector('script[type="application/poly+json"]');
-  if (!dataEl) { alert('Chyba: poly+json blok nenalezen'); return; }
+  if (!dataEl) { alert('Error: poly+json block not found'); return; }
   try { polyData = JSON.parse(dataEl.textContent); }
-  catch (e) { alert('Chyba parsování poly+json: ' + e.message); return; }
+  catch (e) { alert('Error parsing poly+json: ' + e.message); return; }
+
+  // Localisation — reads poly.lang, defaults to 'en'
+  initLang(polyData.poly.lang || 'en');
+  document.getElementById('btn-copy').textContent = '📋 ' + t('copy_btn');
 
   workflowState = JSON.parse(JSON.stringify(polyData.content.n8n_data));
 
@@ -796,12 +854,12 @@ function buildPromptField(node, key, val) {
   const hint = val.slice('555-PROMPT:'.length);
   const wrap = document.createElement('div');
   wrap.className = 'param-prompt-wrap';
-  wrap.innerHTML = `<div class="param-prompt-header">⚠ VYPLNIT</div>
+  wrap.innerHTML = `<div class="param-prompt-header">${t('prompt_header')}</div>
     <div class="param-prompt-hint">${esc(hint)}</div>`;
   const input = document.createElement('textarea');
   input.className = 'param-input';
   input.rows = 1;
-  input.placeholder = 'Zadejte hodnotu…';
+  input.placeholder = t('value_placeholder');
   input.style.marginTop = '4px';
   input.addEventListener('input', () => {
     setParam(node.id, key, input.value || val);
@@ -817,15 +875,15 @@ function buildLockedField(node, key, val) {
   wrap.className = 'param-locked-wrap';
   const msg = document.createElement('div');
   msg.className = 'param-locked-header';
-  msg.innerHTML = '🔒 ŠIFROVÁNO — zadejte heslo pro dešifrování';
+  msg.textContent = t('locked_header');
   wrap.appendChild(msg);
 
   const row = document.createElement('div');
   row.className = 'decrypt-row';
   const pwInput = document.createElement('input');
-  pwInput.type = 'password'; pwInput.placeholder = 'Heslo…';
+  pwInput.type = 'password'; pwInput.placeholder = t('pw_placeholder');
   const decBtn = document.createElement('button');
-  decBtn.className = 'btn'; decBtn.textContent = 'Dešifrovat';
+  decBtn.className = 'btn'; decBtn.textContent = t('decrypt_btn');
   row.appendChild(pwInput); row.appendChild(decBtn);
   wrap.appendChild(row);
 
@@ -837,11 +895,11 @@ function buildLockedField(node, key, val) {
     try {
       const plain = await decryptValue(val, pwInput.value);
       setParam(node.id, key, plain);
-      result.innerHTML = `<span style="color:var(--conn-true);font-size:11px">✓ Dešifrováno — hodnota uložena</span>`;
+      result.innerHTML = `<span style="color:var(--conn-true);font-size:11px">${t('decrypt_ok')}</span>`;
       refreshNodeBadge(node.id);
       updatePendingBadge();
     } catch {
-      result.innerHTML = `<span style="color:var(--locked);font-size:11px">✗ Špatné heslo nebo poškozená data</span>`;
+      result.innerHTML = `<span style="color:var(--locked);font-size:11px">${t('decrypt_err')}</span>`;
     }
   });
 
@@ -851,7 +909,7 @@ function buildLockedField(node, key, val) {
 function buildEncryptHelper(node) {
   const section = document.createElement('div');
   section.className = 'encrypt-section';
-  section.innerHTML = `<div class="encrypt-label">🔐 Zašifrovat hodnotu do 555-LOCKED-aes256</div>`;
+  section.innerHTML = `<div class="encrypt-label">${t('encrypt_label')}</div>`;
 
   const selRow = document.createElement('div');
   selRow.className = 'encrypt-row';
@@ -869,7 +927,7 @@ function buildEncryptHelper(node) {
   pwInput.className = 'param-input';
 
   const encBtn = document.createElement('button');
-  encBtn.className = 'btn'; encBtn.textContent = 'Zašifrovat';
+  encBtn.className = 'btn'; encBtn.textContent = t('encrypt_btn');
   encBtn.style.marginTop = '6px';
 
   const resultEl = document.createElement('div');
@@ -878,12 +936,12 @@ function buildEncryptHelper(node) {
   encBtn.addEventListener('click', async () => {
     const key = paramSel.value;
     const current = String(node.parameters[key]);
-    if (!pwInput.value) { resultEl.innerHTML = '<span style="color:var(--locked);font-size:11px">Zadejte heslo</span>'; return; }
-    if (current.startsWith('555-')) { resultEl.innerHTML = '<span style="color:var(--locked);font-size:11px">Vyberte parametr s plaintext hodnotou</span>'; return; }
+    if (!pwInput.value) { resultEl.innerHTML = `<span style="color:var(--locked);font-size:11px">${t('encrypt_no_pw')}</span>`; return; }
+    if (current.startsWith('555-')) { resultEl.innerHTML = `<span style="color:var(--locked);font-size:11px">${t('encrypt_no_plain')}</span>`; return; }
     try {
       const locked = await encryptValue(current, pwInput.value);
       setParam(node.id, key, locked);
-      resultEl.innerHTML = `<span style="color:var(--conn-true);font-size:11px">✓ Parametr "${key}" zašifrován</span>`;
+      resultEl.innerHTML = `<span style="color:var(--conn-true);font-size:11px">${t('encrypt_ok', key)}</span>`;
       renderEditor(node); // re-render editor
     } catch (e) {
       resultEl.innerHTML = `<span style="color:var(--locked);font-size:11px">Chyba: ${e.message}</span>`;
@@ -937,10 +995,10 @@ function updatePendingBadge() {
   const n = countAllPending();
   const el = document.getElementById('pending-badge');
   if (n === 0) {
-    el.textContent = '✓ Připraveno ke kopírování';
+    el.textContent = t('pending_none');
     el.className = 'ok';
   } else {
-    el.textContent = `⚠ ${n} uzel${n > 1 ? (n < 5 ? 'y' : 'ů') : ''} čeká na vyplnění`;
+    el.textContent = t('pending_some', n);
     el.className = '';
   }
 }
@@ -950,13 +1008,13 @@ function copyToN8n() {
   const pending = workflowState.nodes.filter(nodeHasPending);
   if (pending.length > 0) {
     const names = pending.map(n => n.name).join(', ');
-    showToast(`⚠ Nevyplněno: ${names}`, 'error');
+    showToast(t('copy_pending', names), 'error');
     return;
   }
   const json = JSON.stringify(workflowState, null, 2);
   navigator.clipboard.writeText(json)
-    .then(() => showToast('✓ Zkopírováno! Jdi do n8n a stiskni Ctrl+V', 'success'))
-    .catch(() => showToast('Chyba: clipboard nedostupný (HTTPS required)', 'error'));
+    .then(() => showToast(t('copy_ok'), 'success'))
+    .catch(() => showToast(t('copy_err'), 'error'));
 }
 
 // ── Web Crypto — AES-256-GCM ───────────────────────────────
