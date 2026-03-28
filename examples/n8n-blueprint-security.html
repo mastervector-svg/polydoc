@@ -208,6 +208,7 @@
     }
     .node-group[data-risk="3"] { animation: pulse-critical 1.8s ease-in-out infinite; }
     .audit-overlay { pointer-events: none; font-family: sans-serif; }
+    .egress-label  { pointer-events: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; opacity: .85; }
 
     /* ── Audit floating panel ── */
     #audit-panel {
@@ -333,6 +334,16 @@
         </marker>
         <marker id="arr-false" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10z" fill="var(--conn-false)"/>
+        </marker>
+        <!-- open arrowheads for egress/external connections, one per risk level -->
+        <marker id="arr-egress-1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M1,1 L9,5 L1,9" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="arr-egress-2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M1,1 L9,5 L1,9" fill="none" stroke="var(--amber)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="arr-egress-3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M1,1 L9,5 L1,9" fill="none" stroke="var(--locked)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </marker>
       </defs>
       <g id="canvas-root"></g>
@@ -834,6 +845,7 @@ function renderGraph() {
   root.innerHTML = '';
   renderConnections();
   renderNodes();
+  renderEgressArrows();
 }
 
 function renderConnections() {
@@ -1004,6 +1016,113 @@ function renderNodes() {
 }
 
 function truncate(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+
+// ── Egress Arrows — data leaving the trusted scope ─────────
+
+// Named-service map: type keyword → display label
+const _SERVICE_LABEL = [
+  [/gmail|sendmail|smtp|mailgun|sendgrid/, '→ Email'],
+  [/slack/,       '→ Slack'],
+  [/telegram/,    '→ Telegram'],
+  [/discord/,     '→ Discord'],
+  [/msteams/,     '→ MS Teams'],
+  [/whatsapp/,    '→ WhatsApp'],
+  [/twilio/,      '→ Twilio'],
+  [/stripe/,      '→ Stripe'],
+  [/s3\b/,        '→ S3'],
+  [/googledrive|gdrive/, '→ Google Drive'],
+  [/dropbox/,     '→ Dropbox'],
+  [/onedrive/,    '→ OneDrive'],
+  [/googlesheets|gsheets/, '→ Sheets'],
+  [/airtable/,    '→ Airtable'],
+  [/notion/,      '→ Notion'],
+  [/openai/,      '→ OpenAI'],
+  [/anthropic/,   '→ Anthropic'],
+  [/huggingface|replicate/, '→ AI API'],
+  [/apify/,       '→ Apify'],
+  [/postgres|mysql|mongodb|redis|supabase/, '→ Database'],
+  [/\bftp\b|sftp/, '→ FTP/SFTP'],
+  [/webhook/,     '→ Webhook out'],
+];
+
+function _egressLabel(node) {
+  const type = (node.type || '').toLowerCase();
+  for (const [re, label] of _SERVICE_LABEL) if (re.test(type)) return label;
+
+  // HTTP Request — try to extract the target domain from parameters
+  if (/httprequest/.test(type)) {
+    const paramsStr = JSON.stringify(node.parameters || {});
+    // Match "url":"https://something.example.com/path"
+    const m = paramsStr.match(/"url"\s*:\s*"(https?:\/\/[^"]{4,})"/);
+    if (m) {
+      try {
+        const host = new URL(m[1]).hostname.replace(/^www\./, '');
+        return '→ ' + (host.length > 22 ? host.slice(0, 20) + '…' : host);
+      } catch { /* fall through */ }
+    }
+    return '→ HTTP';
+  }
+
+  return '→ External';
+}
+
+function _svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function renderEgressArrows() {
+  const RISK_COLOR = [null, 'var(--accent)', 'var(--amber)', 'var(--locked)'];
+  const ARROW_LEN  = 90;   // px in SVG units
+  const WAVE_Y     = -10;  // slight upward angle — "leaving"
+
+  for (const node of workflowState.nodes) {
+    const risk = node._risk || { level: 0 };
+    if (risk.level < 1) continue;                    // safe nodes: no arrow
+
+    const [x, y] = node.position || [0, 0];
+    const color   = RISK_COLOR[risk.level];
+    const label   = _egressLabel(node);
+
+    const ox = x + NODE_W;                           // output port X
+    const oy = y + NODE_H / 2;                       // output port Y
+    const tx = ox + ARROW_LEN;
+    const ty = oy + WAVE_Y;
+
+    const g = _svgEl('g', { class: 'egress-group', 'data-egress': node.id });
+
+    // Dashed line
+    const line = _svgEl('path', {
+      d: `M${ox},${oy} C${ox + ARROW_LEN * .4},${oy} ${tx - ARROW_LEN * .3},${ty} ${tx},${ty}`,
+      fill: 'none',
+      stroke: color,
+      'stroke-width': '1.5',
+      'stroke-dasharray': '5,3',
+      'marker-end': `url(#arr-egress-${risk.level})`,
+    });
+    g.appendChild(line);
+
+    // Destination label
+    const txt = _svgEl('text', {
+      x: tx + 7, y: ty + 4,
+      'font-size': '10',
+      fill: color,
+      class: 'egress-label',
+    });
+    txt.textContent = label;
+    g.appendChild(txt);
+
+    // Small "cloud" endpoint — circle at arrow tip
+    const dot = _svgEl('circle', {
+      cx: tx, cy: ty, r: 3,
+      fill: color, opacity: '.5',
+    });
+    g.appendChild(dot);
+
+    root.appendChild(g);
+  }
+}
 
 // ── Node selection & Editor ────────────────────────────────
 function selectNode(id) {
