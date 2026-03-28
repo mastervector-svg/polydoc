@@ -43,6 +43,7 @@ Click the button → full interactive version loads on your server.
 | **IoT: Firewall config** — schema versioning, signature, POST to device | [iot-firewall-config.html](https://mastervector-svg.github.io/polydoc/examples/iot-firewall-config.html) |
 | **IoT: Sensor telemetry** — log file that renders itself as a dashboard | [iot-sensor-telemetry.html](https://mastervector-svg.github.io/polydoc/examples/iot-sensor-telemetry.html) |
 | **IoT: Device passport** — identity, API spec, warranty, manufacturer signature | [device-passport.html](https://mastervector-svg.github.io/polydoc/examples/device-passport.html) |
+| **n8n Blueprint** — share workflows safely: encrypted credentials, visual node map, one-click import | [n8n-blueprint.html](https://mastervector-svg.github.io/polydoc/examples/n8n-blueprint.html) |
 
 ---
 
@@ -75,7 +76,7 @@ A single `.html` file that is simultaneously:
 
 ---
 
-## Six Use Cases
+## Seven Use Cases
 
 ### 1. Transactional Documents
 Invoices, confirmations, offers, contracts.
@@ -191,7 +192,67 @@ The manifest signature guarantees that the listings the buyer saw at order time 
 
 [→ Fill Providers spec](spec/POLYDOC_ENVELOPE.md#11-fill-providers--on-demand-slot-filling-by-external-service)
 
-### 6. IoT & Embedded Devices — the killer use case
+### 6. Automation Workflow Blueprints — share n8n workflows safely
+
+> *"I wanted to share an n8n workflow with a client. It had 4 API keys and a database password. I ended up sending a PDF with black boxes over the secrets and a separate text file explaining what to fill in. There has to be a better way."*
+
+There is.
+
+A PolyDoc n8n Blueprint is a **single `.html` file** that contains the workflow, its documentation, and a safe mechanism for handling secrets — all in one shareable package.
+
+#### The problem with sharing n8n workflows today
+
+Export JSON from n8n → workflow contains real API keys and passwords → you redact them manually → recipient doesn't know what to fill in → you write a separate setup guide → they still get it wrong.
+
+PolyDoc collapses that into one file.
+
+#### How it works
+
+The Blueprint renders your workflow as an **interactive visual map** (SVG canvas, pan & zoom, color-coded nodes). Sensitive parameters use the **555- security protocol**:
+
+```json
+"parameters": {
+  "url": "https://api.emailvalidation.io/v1/info",
+  "apiKey": "555-PROMPT:Enter your emailvalidation.io API key",
+  "dbPassword": "555-LOCKED-aes256:U2FsdGVkX1..."
+}
+```
+
+- **`555-PROMPT:`** — renders an orange input box with the description. The recipient fills it in directly in the browser.
+- **`555-LOCKED-aes256:`** — value is AES-256-GCM encrypted (Web Crypto API). Recipient enters the shared password → decrypts locally, never sent anywhere.
+
+The **[Copy to n8n]** button validates that every `555-` placeholder is resolved, then copies clean workflow JSON to clipboard. The recipient presses `Ctrl+V` in n8n — done.
+
+The **documentation sidebar** renders Markdown + Mermaid diagrams from the same file:
+
+```
+```mermaid
+flowchart TD
+    A([Webhook]) --> B[Normalize] --> C[Verify Email]
+    C --> D{Valid?}
+    D -- true  --> E[(Save to DB)] --> F[/Send Welcome/]
+    D -- false --> G[Log Error]
+```
+```
+
+**⬇ Offline button** — fetches Mermaid from CDN and saves a fully offline copy (~700 KB). **✂ Lean button** — strips it back to the CDN version.
+
+#### What you get
+
+| Traditional workflow sharing | PolyDoc Blueprint |
+|------------------------------|-------------------|
+| JSON export + manual redaction + separate setup doc | One `.html` file |
+| "What do I put in the API key field?" | `555-PROMPT:` description, right there |
+| Password in plaintext in the JSON | AES-256-GCM, decrypted locally |
+| Recipient pastes wrong JSON format | [Copy to n8n] → Ctrl+V, done |
+| No visual overview | SVG node map with pan & zoom |
+| Setup guide written in a Google Doc | Markdown + Mermaid in the sidebar |
+
+Zero dependencies. Works offline. MIT.
+
+[→ Live demo](https://mastervector-svg.github.io/polydoc/examples/n8n-blueprint.html)
+
+### 7. IoT & Embedded Devices — the killer use case
 
 > *"I used to ship 8 MB of React to configure a smart socket. Now I ship one HTML file."*
 
@@ -539,6 +600,7 @@ docker run -p 3000:3000 -e LLM_BASE_URL -e LLM_API_KEY -e LLM_MODEL \
 - [x] Embedded media & WASM apps inside envelope
 - [x] Export lock with per-user watermark
 - [x] Full English translation of all spec files
+- [x] **n8n Blueprint** — workflow sharing with 555- security protocol, SVG node map, Mermaid docs, Copy to n8n, offline mode
 - [ ] Shared interpreter on CDN (`poly-interpreter.js`)
 - [ ] SubtleCrypto signature verification (browser)
 - [ ] `npx polydoc render invoice.json` CLI
@@ -550,7 +612,7 @@ docker run -p 3000:3000 -e LLM_BASE_URL -e LLM_API_KEY -e LLM_MODEL \
 ### v2.0
 - [ ] MCP server — PolyDoc as MCP tool for AI agents (`fill_slot`, `pack_envelope`, `list_envelopes`)
 - [ ] WYSIWYG editor
-- [ ] Official integrations (Lovable, Cursor, n8n)
+- [ ] Official integrations (Lovable, Cursor, ~~n8n~~ ✅ Blueprint done)
 - [ ] Offline-first (Service Worker)
 - [ ] Key server reference implementation
 - [ ] Notary service reference implementation
