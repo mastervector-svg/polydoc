@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PolyDoc — n8n Blueprint</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <style>
     :root {
       --bg: #0d1117;
@@ -76,6 +77,9 @@
     #sidebar ul { padding-left: 14px; color: var(--muted); }
     #sidebar li { margin-bottom: 3px; }
     #sidebar code { background: var(--border); padding: 1px 5px; border-radius: 3px; font-size: 11px; font-family: monospace; }
+    #sidebar pre { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 11px; font-family: monospace; overflow-x: auto; margin-bottom: 8px; }
+    #sidebar .mermaid { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 8px; text-align: center; }
+    #sidebar .mermaid svg { max-width: 100%; height: auto; }
     #sidebar strong { color: var(--text); }
     #sidebar em { color: var(--accent2); font-style: normal; }
     #sidebar hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
@@ -239,7 +243,7 @@
     }
   },
   "content": {
-    "docs": "# Customer Onboarding\n\nAutomatický workflow pro zpracování nových zákazníků z webového formuláře.\n\n## Co dělá\n\n- Přijme data z webhooků registračního formuláře\n- Normalizuje vstupní data (lowercase email, trim)\n- Ověří email přes externí API\n- Uloží zákazníka do databáze\n- Odešle uvítací email\n\n## Prerekvizity\n\n- **n8n** >= 1.0, selfhosted nebo cloud\n- **PostgreSQL** — tabulka `customers` musí existovat (viz SQL níže)\n- **Email API klíč** — emailvalidation.io nebo Hunter.io\n- **SMTP server** — pro odesílání uvítacích emailů\n\n## SQL setup\n\n```sql\nCREATE TABLE customers (\n  id SERIAL PRIMARY KEY,\n  email TEXT UNIQUE NOT NULL,\n  name TEXT,\n  created_at TIMESTAMPTZ DEFAULT NOW()\n);\n```\n\n## Konfigurace\n\nKlikni na uzel na plátně a vyplň parametry označené **⚠ PROMPT**.\n\n## Parametry k vyplnění\n\n- `Verify Email` — API klíč emailvalidation.io\n- `Save to DB` — host, user, heslo k PostgreSQL\n- `Send Welcome Email` — SMTP přihlašovací údaje",
+    "docs": "# Customer Onboarding\n\nAutomatický workflow pro zpracování nových zákazníků z webového formuláře.\n\n## Průběh zpracování\n\n```mermaid\nflowchart TD\n    A([Webhook]) --> B[Normalize Data]\n    B --> C[Verify Email]\n    C --> D{Valid Email?}\n    D -- true --> E[(Save to DB)]\n    D -- true --> F[/Send Welcome Email/]\n    D -- false --> G[Log Invalid Email]\n```\n\n## Co dělá\n\n- Přijme data z webhooků registračního formuláře\n- Normalizuje vstupní data (lowercase email, trim)\n- Ověří email přes externí API\n- Uloží zákazníka do databáze\n- Odešle uvítací email\n\n## Prerekvizity\n\n- **n8n** >= 1.0, selfhosted nebo cloud\n- **PostgreSQL** — tabulka `customers` musí existovat (viz SQL níže)\n- **Email API klíč** — emailvalidation.io nebo Hunter.io\n- **SMTP server** — pro odesílání uvítacích emailů\n\n## SQL setup\n\n```sql\nCREATE TABLE customers (\n  id SERIAL PRIMARY KEY,\n  email TEXT UNIQUE NOT NULL,\n  name TEXT,\n  created_at TIMESTAMPTZ DEFAULT NOW()\n);\n```\n\n## Konfigurace\n\nKlikni na uzel na plátně a vyplň parametry označené **⚠ PROMPT**.\n\n## Parametry k vyplnění\n\n- `Verify Email` — API klíč emailvalidation.io\n- `Save to DB` — host, user, heslo k PostgreSQL\n- `Send Welcome Email` — SMTP přihlašovací údaje",
     "n8n_data": {
       "name": "Customer Onboarding",
       "nodes": [
@@ -429,38 +433,56 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('doc-meta').textContent = 'PolyDoc n8n Blueprint';
 });
 
-// ── Markdown renderer (minimal) ────────────────────────────
+// ── Markdown renderer (minimal, s podporou fenced code bloků) ──
 function renderMd(md) {
   const lines = md.split('\n');
   let html = '';
   let inUl = false;
+  let fence = null;   // null | 'mermaid' | 'code'
+  let fenceBuf = [];
 
-  for (let line of lines) {
+  const flushUl = () => { if (inUl) { html += '</ul>'; inUl = false; } };
+  const flushFence = () => {
+    if (fence === 'mermaid') {
+      // Mermaid diagram — div.mermaid, mermaid.run() zpracuje po vložení do DOM
+      html += `<div class="mermaid">${fenceBuf.join('\n')}</div>`;
+    } else {
+      html += `<pre><code>${fenceBuf.map(esc).join('\n')}</code></pre>`;
+    }
+    fence = null; fenceBuf = [];
+  };
+
+  for (const line of lines) {
+    if (fence !== null) {
+      if (line.startsWith('```')) { flushFence(); }
+      else { fenceBuf.push(line); }
+      continue;
+    }
+    if (line.startsWith('```')) {
+      flushUl();
+      const lang = line.slice(3).trim().toLowerCase();
+      fence = lang === 'mermaid' ? 'mermaid' : 'code';
+      fenceBuf = [];
+      continue;
+    }
     if (line.startsWith('### ')) {
-      if (inUl) { html += '</ul>'; inUl = false; }
-      html += `<h3>${esc(line.slice(4))}</h3>`;
+      flushUl(); html += `<h3>${esc(line.slice(4))}</h3>`;
     } else if (line.startsWith('## ')) {
-      if (inUl) { html += '</ul>'; inUl = false; }
-      html += `<h2>${esc(line.slice(3))}</h2>`;
+      flushUl(); html += `<h2>${esc(line.slice(3))}</h2>`;
     } else if (line.startsWith('# ')) {
-      if (inUl) { html += '</ul>'; inUl = false; }
-      html += `<h1>${esc(line.slice(2))}</h1>`;
+      flushUl(); html += `<h1>${esc(line.slice(2))}</h1>`;
     } else if (line.startsWith('- ')) {
       if (!inUl) { html += '<ul>'; inUl = true; }
       html += `<li>${inlineFormat(line.slice(2))}</li>`;
-    } else if (line.startsWith('```')) {
-      if (inUl) { html += '</ul>'; inUl = false; }
-      // skip fence lines
     } else if (line.startsWith('---')) {
-      if (inUl) { html += '</ul>'; inUl = false; }
-      html += '<hr>';
+      flushUl(); html += '<hr>';
     } else if (line.trim() === '') {
-      if (inUl) { html += '</ul>'; inUl = false; }
+      flushUl();
     } else {
-      if (inUl) { html += '</ul>'; inUl = false; }
-      html += `<p>${inlineFormat(line)}</p>`;
+      flushUl(); html += `<p>${inlineFormat(line)}</p>`;
     }
   }
+  if (fence !== null) flushFence();
   if (inUl) html += '</ul>';
   return html;
 }
@@ -479,6 +501,11 @@ function esc(s) {
 function renderDocs() {
   const md = polyData.content.docs || '_Bez dokumentace._';
   document.getElementById('sidebar').innerHTML = renderMd(md);
+  // Inicializuj Mermaid (dark theme) a vyrenderuj všechny div.mermaid v sidebaru
+  if (window.mermaid && document.querySelector('#sidebar .mermaid')) {
+    mermaid.initialize({ startOnLoad: false, theme: 'dark', darkMode: true });
+    mermaid.run({ nodes: document.querySelectorAll('#sidebar .mermaid') });
+  }
 }
 
 // ── SVG Canvas ─────────────────────────────────────────────
