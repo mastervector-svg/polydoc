@@ -196,14 +196,17 @@
       border-radius: 6px; padding: 5px 8px; color: var(--text); font-size: 12px;
     }
 
-    /* ── Security audit overlays ── */
+    /* ── Security Severity Scale ──
+       Level 0 Safe     — no change
+       Level 1 Info     — blue ring (network/data egress)
+       Level 2 Warning  — amber ring + ⚠ badge
+       Level 3 Critical — red ring + ☠ badge + pulse
+    ── */
     @keyframes pulse-critical {
       0%, 100% { opacity: 1; }
-      50% { opacity: .45; }
+      50%       { opacity: .4; }
     }
-    .node-group.audit-critical .node-rect { stroke: var(--locked) !important; stroke-width: 2.5 !important; }
-    .node-group.audit-warning  .node-rect { stroke: var(--amber)  !important; stroke-width: 2   !important; }
-    .node-group.audit-critical { animation: pulse-critical 1.8s ease-in-out infinite; }
+    .node-group[data-risk="3"] { animation: pulse-critical 1.8s ease-in-out infinite; }
     .audit-overlay { pointer-events: none; font-family: sans-serif; }
 
     /* ── Audit floating panel ── */
@@ -229,8 +232,9 @@
       background: var(--bg); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px;
       border-left: 3px solid var(--border);
     }
-    .audit-finding.critical { border-left-color: var(--locked); }
+    .audit-finding.info     { border-left-color: var(--accent); }
     .audit-finding.warning  { border-left-color: var(--amber); }
+    .audit-finding.critical { border-left-color: var(--locked); }
     .audit-finding-node { font-weight: 600; color: var(--text); cursor: pointer; }
     .audit-finding-node:hover { color: var(--accent); }
     .audit-finding-msg { color: var(--muted); margin-top: 3px; line-height: 1.4; }
@@ -893,6 +897,15 @@ function renderNodes() {
     const color = nodeColor(node.type);
     const icon = nodeIcon(node.type);
     const hasPending = nodeHasPending(node);
+    const risk = node._risk || { level: 0 };
+
+    // Risk → visual
+    const RISK_STROKE  = ['rgba(255,255,255,.15)', 'var(--accent)', 'var(--amber)', 'var(--locked)'];
+    const RISK_WIDTH   = [1.5, 1.5, 2, 2.5];
+    const strokeColor  = hasPending ? 'var(--prompt)' : RISK_STROKE[risk.level];
+    const strokeWidth  = hasPending ? 1.5 : RISK_WIDTH[risk.level];
+
+    g.setAttribute('data-risk', risk.level);
 
     // Main rect
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -901,8 +914,8 @@ function renderNodes() {
     rect.setAttribute('width', NODE_W); rect.setAttribute('height', NODE_H);
     rect.setAttribute('rx', 8); rect.setAttribute('ry', 8);
     rect.setAttribute('fill', color);
-    rect.setAttribute('stroke', hasPending ? 'var(--prompt)' : 'rgba(255,255,255,.15)');
-    rect.setAttribute('stroke-width', '1.5');
+    rect.setAttribute('stroke', strokeColor);
+    rect.setAttribute('stroke-width', strokeWidth);
     g.appendChild(rect);
 
     // Icon strip (left)
@@ -946,12 +959,25 @@ function renderNodes() {
     typeEl.textContent = nodeTypeShort(node.type);
     g.appendChild(typeEl);
 
-    // Pending badge
+    // Pending badge (555-PROMPT dot)
     if (hasPending) {
       const badge = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       badge.setAttribute('cx', x + NODE_W - 8); badge.setAttribute('cy', y + 8);
       badge.setAttribute('r', 5); badge.setAttribute('fill', 'var(--prompt)');
       g.appendChild(badge);
+    }
+
+    // Risk badge (⚠ / ☠) for level 2+
+    if (risk.level >= 2) {
+      const rbadge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      rbadge.setAttribute('class', 'node-label');
+      rbadge.setAttribute('x', x + NODE_W - 4);
+      rbadge.setAttribute('y', y + hasPending ? 26 : 14);
+      rbadge.setAttribute('text-anchor', 'end');
+      rbadge.setAttribute('font-size', '13');
+      rbadge.setAttribute('fill', risk.level === 3 ? 'var(--locked)' : 'var(--amber)');
+      rbadge.textContent = risk.level === 3 ? '☠' : '⚠';
+      g.appendChild(rbadge);
     }
 
     // Input port
@@ -1267,110 +1293,151 @@ async function decryptValue(lockedStr, password) {
 }
 
 // ── Security Scanner ───────────────────────────────────────
-const auditResults = new Map(); // nodeId → {level, risks:[{msg, vtUrl?}], aiReason?}
+// 4-level numeric severity scale:
+//   0 Safe     — no visual change
+//   1 Info     — blue ring (network / data egress by node type)
+//   2 Warning  — amber ring + ⚠ badge (local code execution, file access)
+//   3 Critical — red ring + ☠ badge + pulse (OS commands, dangerous code patterns)
 
-function _maxLevel(a, b) { return ({safe:0,warning:1,critical:2}[a]||0) >= ({safe:0,warning:1,critical:2}[b]||0) ? a : b; }
+const auditResults = new Map(); // nodeId → {level:0-3, risks:[{msg,vtUrl?}], aiReason?}
+
+// Type-based baseline level table (matched against lowercased node.type)
+const _TYPE_LEVEL = [
+  // 3 — Critical by type alone
+  [3, /executecommand|\bssh\b/],
+  // 2 — Warning: local code/file execution
+  [2, /\bcode\b|\bfunction\b|readbinaryfile|writebinaryfile|\bftp\b/],
+  // 1 — Info: network / data egress
+  [1, /httprequest|webhook|gmail|sendmail|smtp|mailgun|slack|telegram|discord|msteams|
+       postgres|mysql|mongodb|redis|supabase|airtable|googlesheets|notion|
+       s3|googledrive|dropbox|onedrive|sftp|stripe|twilio|whatsapp|apify|
+       openai|anthropic|huggingface|replicate/x],
+];
+
+function _typeLevel(type) {
+  const t = (type || '').toLowerCase();
+  for (const [lvl, re] of _TYPE_LEVEL) if (re.test(t)) return lvl;
+  return 0;
+}
 
 function _extractIPs(str) {
   const out = [];
   for (const m of str.matchAll(/\b(\d{1,3}\.){3}\d{1,3}\b/g)) {
     const ip = m[0];
-    if (!ip.startsWith('127.') && !ip.startsWith('10.') && !ip.startsWith('192.168.') && !ip.startsWith('172.'))
+    if (!ip.startsWith('127.') && !ip.startsWith('10.') &&
+        !ip.startsWith('192.168.') && !ip.startsWith('172.'))
       out.push(ip);
   }
   return [...new Set(out)];
 }
 
-function scanNodeRisk(node) {
-  const risks = [];
+function computeNodeRisk(node) {
   const type = (node.type || '').toLowerCase();
   const params = JSON.stringify(node.parameters || {});
+  let level = _typeLevel(node.type);
+  const risks = [];
 
-  // Execute Command / SSH — always critical
+  // ── Type-based baseline messages ──
   if (/executecommand/.test(type))
-    risks.push({ level: 'critical', msg: 'Executes OS commands directly on the server' });
+    risks.push({ msg: 'Execute Command — runs OS commands on the server' });
   if (/\bssh\b/.test(type))
-    risks.push({ level: 'critical', msg: 'SSH node — runs commands on a remote server' });
+    risks.push({ msg: 'SSH — executes commands on a remote server' });
 
-  // Code / Function nodes
-  if (/\bcode\b|\bfunction\b/.test(type)) {
-    if (/\beval\s*\(/.test(params))
-      risks.push({ level: 'critical', msg: 'eval() — executes arbitrary dynamic code' });
-    if (/require\s*\(\s*["'`]child_process/.test(params))
-      risks.push({ level: 'critical', msg: 'child_process — can spawn OS subprocesses' });
-    if (/new\s+Function\s*\(/.test(params))
-      risks.push({ level: 'critical', msg: 'new Function() — dynamic code execution' });
-    if (/process\.env/.test(params))
-      risks.push({ level: 'warning', msg: 'process.env — reads env vars (possible credential leak)' });
-    if (/require\s*\(\s*["'`]fs["'`]/.test(params))
-      risks.push({ level: 'warning', msg: 'fs module — reads/writes files on the server' });
-    if (/[A-Za-z0-9+/]{80,}={0,2}/.test(params))
-      risks.push({ level: 'warning', msg: 'Large Base64 string — possible obfuscated payload' });
-    if (/\bfetch\s*\(|XMLHttpRequest|axios\./.test(params))
-      risks.push({ level: 'warning', msg: 'HTTP request in Code node — verify destination' });
+  // ── Param-level escalations (Code / Function nodes) ──
+  if (level >= 2 || /\bcode\b|\bfunction\b/.test(type)) {
+    if (/\beval\s*\(/.test(params)) {
+      level = Math.max(level, 3);
+      risks.push({ msg: 'eval() — arbitrary dynamic code execution' });
+    }
+    if (/require\s*\(\s*["'`]child_process/.test(params)) {
+      level = Math.max(level, 3);
+      risks.push({ msg: 'child_process — can spawn OS subprocesses' });
+    }
+    if (/new\s+Function\s*\(/.test(params)) {
+      level = Math.max(level, 3);
+      risks.push({ msg: 'new Function() — dynamic code execution' });
+    }
+    if (/process\.env/.test(params)) {
+      level = Math.max(level, 2);
+      risks.push({ msg: 'process.env — reads env variables (possible credential leak)' });
+    }
+    if (/require\s*\(\s*["'`]fs["'`]/.test(params)) {
+      level = Math.max(level, 2);
+      risks.push({ msg: 'fs module — file system access on the server' });
+    }
+    if (/[A-Za-z0-9+/]{80,}={0,2}/.test(params)) {
+      level = Math.max(level, 2);
+      risks.push({ msg: 'Large Base64 blob — possible obfuscated payload' });
+    }
+    if (/\bfetch\s*\(|XMLHttpRequest|axios\./.test(params)) {
+      level = Math.max(level, 2);
+      risks.push({ msg: 'HTTP call inside Code node — verify destination' });
+    }
   }
 
-  // HTTP Request / Webhook — hardcoded IPs
+  // ── Hardcoded public IPs in any node ──
   for (const ip of _extractIPs(params)) {
-    risks.push({ level: 'warning', msg: `Hardcoded IP: ${ip}`, vtUrl: `https://www.virustotal.com/gui/search/${ip}` });
+    level = Math.max(level, 2);
+    risks.push({ msg: `Hardcoded IP: ${ip}`, vtUrl: `https://www.virustotal.com/gui/search/${ip}` });
   }
 
-  // .onion destinations
-  if (/\.onion[/"'`\s]/.test(params))
-    risks.push({ level: 'critical', msg: 'Tor .onion destination detected' });
+  // ── Plaintext private key ──
+  if (/-----BEGIN .{0,20}PRIVATE KEY/.test(params)) {
+    level = 3;
+    risks.push({ msg: 'Plaintext private key detected in parameters!' });
+  }
 
-  const level = risks.reduce((a, r) => _maxLevel(a, r.level), 'safe');
+  // ── Tor .onion destination ──
+  if (/\.onion[/"'`\s)]/.test(params)) {
+    level = 3;
+    risks.push({ msg: 'Tor .onion destination — highly suspicious' });
+  }
+
   return { level, risks };
+}
+
+function assignRiskLevels() {
+  for (const node of workflowState.nodes) {
+    node._risk = computeNodeRisk(node);
+  }
 }
 
 function scanAllNodes() {
   auditResults.clear();
+  assignRiskLevels();
   for (const node of workflowState.nodes) {
-    const r = scanNodeRisk(node);
-    if (r.risks.length > 0) auditResults.set(node.id, r);
+    if (node._risk && (node._risk.level > 0 || node._risk.risks.length > 0))
+      auditResults.set(node.id, { ...node._risk });
   }
-  applyAuditOverlay();
+  // renderGraph already reads node._risk — just re-render to apply visuals
+  renderGraph();
   _updateAuditBtn();
   _renderAuditScanResults();
 }
 
+// After AI audit: merge results into node._risk and re-render
 function applyAuditOverlay() {
-  // Clear old overlays
-  document.querySelectorAll('.audit-overlay').forEach(el => el.remove());
-  document.querySelectorAll('.node-group[data-audit]').forEach(g => {
-    g.removeAttribute('data-audit');
-    g.classList.remove('audit-warning', 'audit-critical');
-  });
   for (const [nodeId, res] of auditResults) {
-    const g = root.querySelector(`.node-group[data-id="${CSS.escape(nodeId)}"]`);
-    if (!g) continue;
-    g.setAttribute('data-audit', res.level);
-    g.classList.add('audit-' + res.level);
-    // Badge icon top-right
-    const rect = g.querySelector('.node-rect');
-    if (!rect) continue;
-    const bx = parseFloat(rect.getAttribute('x') || 0) + parseFloat(rect.getAttribute('width') || 160) - 6;
-    const by = parseFloat(rect.getAttribute('y') || 0) + 15;
-    const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    badge.setAttribute('class', 'audit-overlay');
-    badge.setAttribute('x', bx); badge.setAttribute('y', by);
-    badge.setAttribute('text-anchor', 'end'); badge.setAttribute('font-size', '14');
-    badge.setAttribute('fill', res.level === 'critical' ? 'var(--locked)' : 'var(--amber)');
-    badge.textContent = res.level === 'critical' ? '☠' : '⚠';
-    g.appendChild(badge);
+    const node = workflowState.nodes.find(n => n.id === nodeId);
+    if (node) node._risk = res;
   }
+  renderGraph();
 }
 
 function _updateAuditBtn() {
-  let crit = 0, warn = 0;
+  let crit = 0, warn = 0, info = 0;
   for (const r of auditResults.values()) {
-    if (r.level === 'critical') crit++; else warn++;
+    if (r.level === 3) crit++;
+    else if (r.level === 2) warn++;
+    else if (r.level === 1) info++;
   }
   const btn = document.getElementById('btn-audit');
   if (crit > 0) {
     btn.textContent = `☠ ${crit} critical`; btn.style.cssText = 'border-color:var(--locked);color:var(--locked)';
   } else if (warn > 0) {
     btn.textContent = `⚠ ${warn} warning`; btn.style.cssText = 'border-color:var(--amber);color:var(--amber)';
+  } else if (info > 0) {
+    btn.textContent = `ℹ ${info} info`; btn.style.cssText = 'border-color:var(--accent);color:var(--accent)';
   } else if (workflowState.nodes.length > 0) {
     btn.textContent = '✓ Secure'; btn.style.cssText = 'border-color:#56d364;color:#56d364';
   } else {
@@ -1378,26 +1445,37 @@ function _updateAuditBtn() {
   }
 }
 
+const _LEVEL_LABEL = ['safe', 'info', 'warning', 'critical'];
+const _LEVEL_ICON  = ['✓', 'ℹ', '⚠', '☠'];
+const _LEVEL_CSS   = ['', 'info', 'warning', 'critical'];
+
 function _renderAuditScanResults() {
   const el = document.getElementById('audit-scan-results');
   if (!el) return;
-  if (auditResults.size === 0) {
+  // Only show level 1+ in the panel
+  const findings = [...auditResults.entries()].filter(([, r]) => r.level > 0);
+  if (findings.length === 0) {
     el.innerHTML = workflowState.nodes.length
-      ? '<p class="audit-empty">✓ No threats detected by offline scan.</p>'
+      ? '<p class="audit-empty">✓ No issues detected by offline scan.</p>'
       : '<p class="audit-empty">Load a workflow to scan.</p>';
     return;
   }
+  // Sort: critical first
+  findings.sort(([, a], [, b]) => b.level - a.level);
   let html = '<div class="audit-section-title">Offline Scan Results</div>';
-  for (const [nodeId, res] of auditResults) {
+  for (const [nodeId, res] of findings) {
     const node = workflowState.nodes.find(n => n.id === nodeId);
     const name = node ? esc(node.name) : nodeId;
-    html += `<div class="audit-finding ${res.level}">
-      <div class="audit-finding-node" onclick="selectNode('${esc(nodeId)}');closeAuditPanel()">${res.level === 'critical' ? '☠' : '⚠'} ${name}</div>`;
+    const css = _LEVEL_CSS[res.level] || 'warning';
+    const icon = _LEVEL_ICON[res.level];
+    html += `<div class="audit-finding ${css}">
+      <div class="audit-finding-node" onclick="selectNode('${esc(nodeId)}');closeAuditPanel()">${icon} ${name} <span style="opacity:.55;font-size:10px">${_LEVEL_LABEL[res.level]}</span></div>`;
     for (const risk of res.risks) {
       html += `<div class="audit-finding-msg">${esc(risk.msg)}`;
       if (risk.vtUrl) html += ` <a class="audit-vt-link" href="${risk.vtUrl}" target="_blank" rel="noopener">🔍 VirusTotal</a>`;
       html += '</div>';
     }
+    if (res.aiReason) html += `<div class="audit-finding-msg" style="color:var(--accent)">🤖 ${esc(res.aiReason)}</div>`;
     html += '</div>';
   }
   el.innerHTML = html;
@@ -1462,14 +1540,16 @@ Include ONLY nodes with findings. Omit safe nodes entirely.`;
     let findings = JSON.parse(raw);
     if (!Array.isArray(findings)) findings = Object.values(findings).find(Array.isArray) || [];
 
-    // Merge AI results into auditResults
+    // Map AI string levels to numeric, merge into auditResults + node._risk
+    const _aiLvl = { safe: 0, info: 1, warning: 2, critical: 3 };
     for (const f of findings) {
-      const existing = auditResults.get(f.nodeId) || { level: 'safe', risks: [] };
-      existing.level = _maxLevel(existing.level, f.level);
+      const aiLevel = _aiLvl[f.level] ?? 1;
+      const existing = auditResults.get(f.nodeId) || { level: 0, risks: [] };
+      existing.level = Math.max(existing.level, aiLevel);
       existing.aiReason = f.reason;
       auditResults.set(f.nodeId, existing);
     }
-    applyAuditOverlay();
+    applyAuditOverlay(); // re-renders graph with updated node._risk
     _updateAuditBtn();
     _renderAuditScanResults();
 
@@ -1480,10 +1560,13 @@ Include ONLY nodes with findings. Omit safe nodes entirely.`;
     } else {
       let html = '<div class="audit-section-title" style="margin-top:14px">AI Audit Results</div>';
       for (const f of findings) {
+        const aiLevel = _aiLvl[f.level] ?? 1;
         const node = workflowState.nodes.find(n => n.id === f.nodeId);
         const name = node ? esc(node.name) : f.nodeId;
-        html += `<div class="audit-finding ${f.level}">
-          <div class="audit-finding-node" onclick="selectNode('${esc(f.nodeId)}');closeAuditPanel()">${f.level === 'critical' ? '☠' : '⚠'} ${name}</div>
+        const css = _LEVEL_CSS[aiLevel] || 'warning';
+        const icon = _LEVEL_ICON[aiLevel];
+        html += `<div class="audit-finding ${css}">
+          <div class="audit-finding-node" onclick="selectNode('${esc(f.nodeId)}');closeAuditPanel()">${icon} ${name}</div>
           <div class="audit-finding-msg">${esc(f.reason)}</div></div>`;
       }
       el.innerHTML = html;
