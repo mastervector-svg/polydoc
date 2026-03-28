@@ -168,6 +168,18 @@
       border-radius: 6px; padding: 5px 8px; color: var(--text); font-size: 12px;
     }
 
+    /* Drag & drop overlay */
+    #drop-overlay {
+      position: absolute; inset: 0; z-index: 50;
+      background: rgba(74, 158, 255, .12);
+      border: 3px dashed var(--accent);
+      border-radius: 12px; margin: 12px;
+      display: none; align-items: center; justify-content: center;
+      font-size: 18px; color: var(--accent); font-weight: 600;
+      pointer-events: none;
+    }
+    #canvas-wrap.drag-over #drop-overlay { display: flex; }
+
     /* Toast */
     #toast {
       position: fixed; bottom: 20px; left: 50%;
@@ -186,6 +198,8 @@
   <h1 id="doc-title">n8n Blueprint</h1>
   <span id="doc-meta"></span>
   <span id="pending-badge">…</span>
+  <input type="file" id="json-file-input" accept=".json,application/json" style="display:none" onchange="loadJsonFile(this)">
+  <button class="btn" id="btn-load" onclick="document.getElementById('json-file-input').click()" title="Load n8n workflow JSON export">📂 Load JSON</button>
   <button class="btn" onclick="fitView()">⊡ Fit</button>
   <button class="btn" id="btn-integrate" onclick="integrateMermaid()" title="Fetch Mermaid from CDN and save a fully offline copy">⬇ Offline</button>
   <button class="btn" id="btn-drop" onclick="dropMermaid()" title="Remove inlined Mermaid, revert to CDN link">✂ Lean</button>
@@ -196,6 +210,7 @@
   <div id="sidebar"></div>
 
   <div id="canvas-wrap">
+    <div id="drop-overlay">⬇ Drop n8n JSON here</div>
     <svg id="canvas-svg" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -440,6 +455,11 @@ const STRINGS = {
     mermaid_dropped:   '✓ CDN version saved',
     mermaid_no_marker: 'Marker not found — was the file modified?',
     mermaid_fetch_err: e => `Fetch error: ${e}`,
+    load_btn:          '📂 Load JSON',
+    load_ok:           name => `✓ Loaded: ${name}`,
+    load_err:          'Not a valid n8n workflow JSON (missing nodes/connections)',
+    load_parse_err:    'JSON parse error',
+    drop_hint:         'Drop n8n workflow JSON here',
   },
   cs: {
     copy_btn:          'Kopírovat pro n8n',
@@ -466,6 +486,11 @@ const STRINGS = {
     mermaid_dropped:   '✓ CDN verze uložena',
     mermaid_no_marker: 'Marker nenalezen — byl soubor upraven?',
     mermaid_fetch_err: e => `Chyba stahování: ${e}`,
+    load_btn:          '📂 Načíst JSON',
+    load_ok:           name => `✓ Načteno: ${name}`,
+    load_err:          'Neplatný n8n workflow JSON (chybí nodes/connections)',
+    load_parse_err:    'Chyba parsování JSON',
+    drop_hint:         'Přetáhni n8n workflow JSON sem',
   },
 };
 
@@ -486,6 +511,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Localisation — reads poly.lang, defaults to 'en'
   initLang(polyData.poly.lang || 'en');
   document.getElementById('btn-copy').textContent = '📋 ' + t('copy_btn');
+  document.getElementById('btn-load').textContent = t('load_btn');
+  document.getElementById('drop-overlay').textContent = '⬇ ' + t('drop_hint');
 
   workflowState = JSON.parse(JSON.stringify(polyData.content.n8n_data));
 
@@ -1064,6 +1091,67 @@ async function decryptValue(lockedStr, password) {
   const dec  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
   return new TextDecoder().decode(dec);
 }
+
+// ── Load JSON ──────────────────────────────────────────────
+function loadWorkflow(json) {
+  if (!json.nodes || !json.connections) {
+    showToast(t('load_err'), 'error');
+    return;
+  }
+  workflowState = JSON.parse(JSON.stringify(json));
+  closeEditor();
+  renderGraph();
+  fitView();
+  updatePendingBadge();
+  const name = json.name || 'Workflow';
+  document.getElementById('doc-title').textContent = name;
+  document.title = 'PolyDoc — ' + name;
+  showToast(t('load_ok', name), 'success');
+}
+
+function loadJsonFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = ''; // reset so same file can be re-loaded
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      loadWorkflow(JSON.parse(e.target.result));
+    } catch {
+      showToast(t('load_parse_err'), 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── Drag & drop ────────────────────────────────────────────
+(function initDragDrop() {
+  const wrap = document.getElementById('canvas-wrap');
+  wrap.addEventListener('dragover', e => {
+    if ([...e.dataTransfer.items].some(i => i.kind === 'file')) {
+      e.preventDefault();
+      wrap.classList.add('drag-over');
+    }
+  });
+  wrap.addEventListener('dragleave', e => {
+    if (!wrap.contains(e.relatedTarget)) wrap.classList.remove('drag-over');
+  });
+  wrap.addEventListener('drop', e => {
+    e.preventDefault();
+    wrap.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        loadWorkflow(JSON.parse(ev.target.result));
+      } catch {
+        showToast(t('load_parse_err'), 'error');
+      }
+    };
+    reader.readAsText(file);
+  });
+})();
 
 // ── Toast ──────────────────────────────────────────────────
 let toastTimer;
