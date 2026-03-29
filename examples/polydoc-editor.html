@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PolyDoc Editor</title>
+
+  <!-- polydoc:cm-start -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/dracula.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/markdown/markdown.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/xml/xml.min.js"></script>
+  <!-- polydoc:cm-end -->
+
+  <!-- polydoc:marked-start -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <!-- polydoc:marked-end -->
+
+  <!-- polydoc:mammoth-start -->
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+  <!-- polydoc:mammoth-end -->
+
+  <!-- polydoc:docx-start -->
+  <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.1/dist/pizzip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.50.0/build/docxtemplater.js"></script>
+  <!-- polydoc:docx-end -->
+
+  <style>
+    :root {
+      --bg: #0d1117; --panel: #161b22; --border: #30363d;
+      --text: #e6edf3; --muted: #7d8590; --accent: #4a9eff;
+      --green: #238636; --amber: #d97706; --red: #f85149;
+      --sidebar-w: 200px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: var(--bg); color: var(--text); height: 100vh;
+           display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── Topbar ── */
+    #topbar { display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+              background: var(--panel); border-bottom: 1px solid var(--border);
+              flex-shrink: 0; flex-wrap: wrap; }
+    #app-logo { font-weight: 700; font-size: 13px; color: var(--accent); white-space: nowrap; }
+    #doc-name { background: transparent; border: 1px solid transparent; color: var(--text);
+                font-size: 13px; padding: 3px 8px; border-radius: 5px; width: 200px;
+                transition: border-color .15s; }
+    #doc-name:hover, #doc-name:focus { border-color: var(--border); outline: none;
+                                        background: var(--bg); }
+    .sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+    .btn { padding: 4px 10px; border-radius: 5px; border: 1px solid var(--border);
+           background: transparent; color: var(--text); cursor: pointer; font-size: 12px;
+           white-space: nowrap; transition: background .15s; }
+    .btn:hover { background: var(--border); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff;
+                   font-weight: 600; }
+    .btn-primary:hover { opacity: .85; }
+    #mode-switcher { display: flex; border: 1px solid var(--border); border-radius: 5px;
+                     overflow: hidden; }
+    .mode-btn { padding: 4px 10px; background: transparent; border: none; color: var(--muted);
+                cursor: pointer; font-size: 12px; font-family: monospace; font-weight: 600;
+                transition: background .15s, color .15s; }
+    .mode-btn:hover { background: var(--border); color: var(--text); }
+    .mode-btn.active { background: rgba(74,158,255,.15); color: var(--accent); }
+    #tpl-select { background: var(--panel); border: 1px solid var(--border); color: var(--text);
+                  padding: 4px 8px; border-radius: 5px; font-size: 12px; cursor: pointer; }
+    #spacer { flex-grow: 1; }
+
+    /* ── Layout ── */
+    #layout { display: flex; flex-grow: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    #sidebar { width: var(--sidebar-w); min-width: 140px; flex-shrink: 0;
+               background: var(--panel); border-right: 1px solid var(--border);
+               display: flex; flex-direction: column; overflow: hidden; }
+    #sidebar-header { font-size: 10px; font-weight: 700; text-transform: uppercase;
+                      letter-spacing: .08em; color: var(--muted); padding: 10px 12px 6px; }
+    #tpl-list { flex-grow: 1; overflow-y: auto; }
+    .tpl-item { display: flex; align-items: center; gap: 6px; padding: 7px 12px;
+                font-size: 12px; cursor: pointer; border-left: 3px solid transparent;
+                transition: background .12s; }
+    .tpl-item:hover { background: rgba(255,255,255,.04); }
+    .tpl-item.active { border-left-color: var(--accent); background: rgba(74,158,255,.08);
+                       color: var(--accent); }
+    .tpl-item.custom { color: var(--muted); }
+    .tpl-item .tpl-del { margin-left: auto; opacity: 0; cursor: pointer; color: var(--red);
+                         font-size: 11px; }
+    .tpl-item:hover .tpl-del { opacity: 1; }
+    #sidebar-footer { border-top: 1px solid var(--border); padding: 8px; }
+    #sidebar-footer .btn { width: 100%; text-align: center; font-size: 11px; }
+
+    /* ── Resizers ── */
+    .resizer { width: 5px; flex-shrink: 0; cursor: col-resize;
+               background: var(--border); transition: background .15s; }
+    .resizer:hover, .resizer.dragging { background: var(--accent); }
+
+    /* ── Editor pane ── */
+    #editor-pane { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 200px; }
+    .CodeMirror { height: 100% !important; font-size: 14px; font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; line-height: 1.65; }
+    .CodeMirror-scroll { padding-bottom: 40px; }
+
+    /* ── Preview pane ── */
+    #preview-pane { width: 420px; min-width: 160px; flex-shrink: 0;
+                    display: flex; flex-direction: column; overflow: hidden;
+                    border-left: 1px solid var(--border); }
+    #preview-toolbar { display: flex; align-items: center; gap: 6px; padding: 5px 10px;
+                       background: var(--panel); border-bottom: 1px solid var(--border);
+                       flex-shrink: 0; }
+    #preview-toolbar span { font-size: 11px; color: var(--muted); flex-grow: 1; }
+    #preview-iframe { flex-grow: 1; border: none; background: #fff; }
+
+    /* ── Toast ── */
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px);
+             background: #22c55e; color: #fff; padding: 8px 20px; border-radius: 8px;
+             font-size: 13px; opacity: 0; transition: all .25s; pointer-events: none; z-index: 1000; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.error { background: var(--red); }
+    #toast.info  { background: var(--accent); }
+
+    /* ── Drag-over ── */
+    #editor-pane.drag-over { outline: 2px dashed var(--accent); outline-offset: -4px; }
+  </style>
+</head>
+<body>
+
+<div id="topbar">
+  <span id="app-logo">PolyDoc</span>
+  <input type="text" id="doc-name" placeholder="Název dokumentu" value="Nový dokument">
+  <div class="sep"></div>
+  <div id="mode-switcher">
+    <button class="mode-btn active" data-mode="markdown">MD</button>
+    <button class="mode-btn" data-mode="json">JSON</button>
+    <button class="mode-btn" data-mode="xml">XML</button>
+  </div>
+  <div class="sep"></div>
+  <label style="font-size:12px;color:var(--muted)">Šablona:</label>
+  <select id="tpl-select"></select>
+  <div id="spacer"></div>
+  <button class="btn" onclick="document.getElementById('file-input').click()" title="Otevřít MD / JSON / XML / DOCX">📂 Otevřít</button>
+  <button class="btn" onclick="document.getElementById('docx-tpl-input').click()" title="Načíst Word šablonu s {{proměnnými}}">📋 Word šablona</button>
+  <div class="sep"></div>
+  <button class="btn" onclick="exportMd()" title="Stáhnout jako .md">📝 MD</button>
+  <button class="btn" onclick="exportDocx()" title="Export do Word">📄 DOCX</button>
+  <button class="btn" onclick="exportPdf()" title="Tisk / PDF">🖨 PDF</button>
+  <button class="btn btn-primary" onclick="saveHtml()">💾 Uložit HTML</button>
+  <button class="btn" onclick="makeOffline()" title="Vložit knihovny inline pro offline použití">📦 Offline</button>
+</div>
+
+<div id="layout">
+  <!-- Sidebar: šablony -->
+  <div id="sidebar">
+    <div id="sidebar-header">Šablony</div>
+    <div id="tpl-list"></div>
+    <div id="sidebar-footer">
+      <button class="btn" onclick="document.getElementById('css-tpl-input').click()">+ Import CSS</button>
+    </div>
+  </div>
+  <div class="resizer" id="sidebar-resizer"></div>
+
+  <!-- Editor -->
+  <div id="editor-pane">
+    <textarea id="cm-editor"></textarea>
+  </div>
+  <div class="resizer" id="pane-resizer"></div>
+
+  <!-- Preview -->
+  <div id="preview-pane">
+    <div id="preview-toolbar">
+      <span id="preview-label">👁 Preview</span>
+      <button class="btn" onclick="togglePreview()" id="btn-preview">Skrýt</button>
+    </div>
+    <iframe id="preview-iframe" sandbox="allow-same-origin allow-scripts"></iframe>
+  </div>
+</div>
+
+<!-- Hidden file inputs -->
+<input type="file" id="file-input" style="display:none"
+       accept=".md,.markdown,.json,.xml,.txt,.docx"
+       onchange="handleFileOpen(this)">
+<input type="file" id="docx-tpl-input" style="display:none"
+       accept=".docx" onchange="handleDocxTemplate(this)">
+<input type="file" id="css-tpl-input" style="display:none"
+       accept=".css" onchange="handleCssTpl(this)">
+
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════
+     POLY+JSON — data block
+     ═══════════════════════════════════════ -->
+<script type="application/poly+json">
+{
+  "poly": { "version": "1.0", "type": "editor", "lang": "cs" },
+  "content": {
+    "name": "Nový dokument",
+    "mode": "markdown",
+    "template": "default",
+    "text": "# Nový dokument\n\nZačni psát svůj obsah zde. PolyDoc editor podporuje **Markdown**, JSON i XML.\n\n## Markdown příklad\n\nText s *kurzívou*, **tučně** a `inline kódem`.\n\n```json\n{\n  \"příklad\": \"JSON bloku uvnitř markdown\",\n  \"číslo\": 42\n}\n```\n\n## Tabulka\n\n| Sloupec A | Sloupec B | Výsledek |\n|-----------|-----------|----------|\n| 10        | 20        | 30       |\n| 5         | 15        | 20       |\n\n## Tip\n\nPřetáhni sem `.md`, `.json`, `.xml` nebo `.docx` soubor.\nWord šablonou s `{{proměnnými}}` vygeneruješ `.docx` export.\n",
+    "docxTemplate": null
+  },
+  "customTemplates": []
+}
+</script>
+
+<!-- ═══════════════════════════════════════
+     APP
+     ═══════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── State ───────────────────────────────────────────────────
+let polyData       = null;
+let cm             = null;
+let currentMode    = 'markdown';
+let currentTpl     = 'default';
+let docxTplBuffer  = null;   // ArrayBuffer of loaded Word template
+let previewVisible = true;
+let _previewTimer  = null;
+
+// ── Built-in templates ──────────────────────────────────────
+const BUILT_IN_TPLS = [
+  {
+    id: 'default', name: '📄 Blank',
+    css: `body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a1a;max-width:800px;margin:0 auto;padding:40px 24px;line-height:1.75}h1{font-size:2em;border-bottom:1px solid #e5e7eb;padding-bottom:.3em;margin-top:1em}h2{font-size:1.4em;margin-top:1.5em}h3{font-size:1.1em}code{background:#f3f4f6;padding:2px 5px;border-radius:4px;font-family:'Courier New',monospace;font-size:.88em}pre{background:#f3f4f6;padding:16px;border-radius:8px;overflow-x:auto}pre code{background:none;padding:0}blockquote{border-left:4px solid #e5e7eb;margin:0;padding:0 1em;color:#6b7280}table{border-collapse:collapse;width:100%;margin:1em 0}th,td{border:1px solid #e5e7eb;padding:8px 12px;text-align:left}th{background:#f9fafb}a{color:#2563eb}img{max-width:100%}hr{border:none;border-top:1px solid #e5e7eb;margin:2em 0}`
+  },
+  {
+    id: 'report', name: '📊 Report',
+    css: `body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;max-width:900px;margin:0 auto;padding:48px 60px;line-height:1.75;background:#fff}h1{font-size:2.2em;color:#1e3a8a;border-bottom:3px solid #2563eb;padding-bottom:12px;margin-bottom:8px}h2{color:#1e40af;margin-top:2em;font-size:1.1em;text-transform:uppercase;letter-spacing:.06em}h3{color:#374151}code{background:#eff6ff;color:#1d4ed8;padding:2px 6px;border-radius:4px;font-family:'Courier New',monospace;font-size:.88em}pre{background:#1e293b;color:#e2e8f0;padding:20px;border-radius:8px}pre code{background:none;color:inherit}blockquote{border-left:4px solid #2563eb;background:#eff6ff;margin:1em 0;padding:12px 20px;border-radius:0 8px 8px 0}table{border-collapse:collapse;width:100%;margin:1.5em 0}th{background:#1e3a8a;color:#fff;padding:10px 14px;text-align:left}td{border:1px solid #dbeafe;padding:8px 14px}tr:nth-child(even) td{background:#f0f9ff}`
+  },
+  {
+    id: 'contract', name: '📋 Smlouva',
+    css: `body{font-family:'Times New Roman',Georgia,serif;color:#111;max-width:800px;margin:0 auto;padding:60px 80px;line-height:1.9;font-size:14px}h1{text-align:center;font-size:1.4em;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2em}h2{font-size:1em;text-transform:uppercase;letter-spacing:.05em;margin-top:2em}h3{font-size:1em;font-style:italic}p{text-align:justify}table{width:100%;border-collapse:collapse;margin:1em 0}td,th{border:1px solid #666;padding:6px 10px}blockquote{border:1px solid #aaa;padding:12px 20px;margin:1em 0;background:#f9f9f9}code{font-family:'Courier New',monospace;background:#f4f4f4;padding:1px 4px}hr{border:none;border-top:2px solid #333;margin:2em 0}`
+  },
+  {
+    id: 'dark', name: '🌑 Dark Tech',
+    css: `body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e6edf3;background:#0d1117;max-width:960px;margin:0 auto;padding:48px 40px;line-height:1.7}h1{font-size:2em;color:#58a6ff;border-bottom:1px solid #30363d;padding-bottom:.4em}h2{color:#79b8ff;font-size:1.4em}h3{color:#7d8590}code{background:#161b22;border:1px solid #30363d;color:#79b8ff;padding:2px 6px;border-radius:4px;font-family:'Courier New',monospace;font-size:.88em}pre{background:#161b22;border:1px solid #30363d;padding:20px;border-radius:8px;overflow-x:auto}pre code{background:none;border:none;color:#e6edf3}blockquote{border-left:4px solid #58a6ff;color:#7d8590;margin:0;padding:0 1em}table{border-collapse:collapse;width:100%}th{background:#161b22;color:#58a6ff;border:1px solid #30363d;padding:8px 14px;text-align:left}td{border:1px solid #30363d;padding:8px 14px}tr:nth-child(even) td{background:#0d1117}a{color:#58a6ff}hr{border:none;border-top:1px solid #30363d}`
+  },
+  {
+    id: 'print', name: '🖨 Tisk / A4',
+    css: `@page{size:A4;margin:25mm 20mm}body{font-family:Arial,sans-serif;color:#000;max-width:210mm;margin:0 auto;padding:20px;line-height:1.6;font-size:11pt}h1{font-size:20pt;border-bottom:2px solid #000;padding-bottom:6px}h2{font-size:14pt;margin-top:1.5em}h3{font-size:12pt}code{font-family:'Courier New',monospace;font-size:9pt;background:#f5f5f5;padding:1px 4px}pre{background:#f5f5f5;padding:12px;font-size:9pt;border:1px solid #ddd}table{border-collapse:collapse;width:100%;margin:1em 0;page-break-inside:avoid}th{background:#e8e8e8;border:1px solid #999;padding:6px 10px;font-size:10pt}td{border:1px solid #999;padding:6px 10px;font-size:10pt}blockquote{border-left:3px solid #333;padding:0 1em;color:#444;margin:1em 0}a{color:#000}@media print{body{max-width:none}}`
+  },
+];
+
+// ── Bootstrap ───────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const dataEl = document.querySelector('script[type="application/poly+json"]');
+  if (!dataEl) { alert('poly+json block not found'); return; }
+  try { polyData = JSON.parse(dataEl.textContent); }
+  catch (e) { alert('poly+json parse error: ' + e.message); return; }
+
+  const c = polyData.content;
+  document.getElementById('doc-name').value = c.name || 'Nový dokument';
+  document.title = 'PolyDoc — ' + (c.name || 'Editor');
+  currentMode = c.mode || 'markdown';
+  currentTpl  = c.template || 'default';
+
+  if (c.docxTemplate) {
+    docxTplBuffer = base64ToArrayBuffer(c.docxTemplate);
+  }
+
+  initModeButtons();
+  initCodeMirror(c.text || '');
+  renderTplList();
+  syncTplSelect();
+  updatePreview();
+  initResizers();
+  initDragDrop();
+});
+
+// ── CodeMirror ──────────────────────────────────────────────
+function initCodeMirror(text) {
+  cm = CodeMirror.fromTextArea(document.getElementById('cm-editor'), {
+    theme: 'dracula',
+    lineNumbers: true,
+    lineWrapping: true,
+    mode: cmMode(currentMode),
+    tabSize: 2,
+    indentWithTabs: false,
+    autofocus: true,
+  });
+  cm.setValue(text);
+  cm.on('change', () => {
+    clearTimeout(_previewTimer);
+    _previewTimer = setTimeout(updatePreview, 350);
+  });
+}
+
+function cmMode(mode) {
+  return mode === 'json' ? 'application/json'
+       : mode === 'xml'  ? 'application/xml'
+       : 'markdown';
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  cm.setOption('mode', cmMode(mode));
+  document.querySelectorAll('.mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === mode));
+  updatePreview();
+}
+
+function initModeButtons() {
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === currentMode);
+    b.addEventListener('click', () => setMode(b.dataset.mode));
+  });
+}
+
+// ── Preview ─────────────────────────────────────────────────
+function updatePreview() {
+  if (!previewVisible) return;
+  const text = cm ? cm.getValue() : '';
+  const css  = getTplCss(currentTpl);
+  let body   = '';
+
+  if (currentMode === 'markdown') {
+    try { body = marked.parse(text); }
+    catch (e) { body = `<pre>${esc(text)}</pre>`; }
+  } else if (currentMode === 'json') {
+    body = jsonToHtml(text);
+  } else {
+    body = xmlToHtml(text);
+  }
+
+  const iframe = document.getElementById('preview-iframe');
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>${body}</body></html>`);
+  doc.close();
+}
+
+function jsonToHtml(text) {
+  try {
+    const data = JSON.parse(text);
+    // Array of objects → table
+    if (Array.isArray(data) && data.length && typeof data[0] === 'object' && data[0] !== null) {
+      const keys = [...new Set(data.flatMap(r => Object.keys(r)))];
+      let h = '<table><thead><tr>' + keys.map(k => `<th>${esc(k)}</th>`).join('') + '</tr></thead><tbody>';
+      data.forEach(row => {
+        h += '<tr>' + keys.map(k => `<td>${esc(String(row[k] ?? ''))}</td>`).join('') + '</tr>';
+      });
+      return h + '</tbody></table>';
+    }
+    return `<pre>${esc(JSON.stringify(data, null, 2))}</pre>`;
+  } catch (e) {
+    return `<p style="color:#f85149;font-family:monospace">⚠ JSON: ${esc(e.message)}</p><pre>${esc(text)}</pre>`;
+  }
+}
+
+function xmlToHtml(text) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'application/xml');
+    const err = doc.querySelector('parsererror');
+    if (err) return `<p style="color:#f85149">⚠ XML chyba</p><pre>${esc(text)}</pre>`;
+    const pretty = new XMLSerializer().serializeToString(doc)
+      .replace(/></g, '>\n<')
+      .split('\n')
+      .map((line, i) => `<span style="color:#7d8590;user-select:none;margin-right:8px">${String(i+1).padStart(3,' ')}</span>${esc(line)}`)
+      .join('\n');
+    return `<pre style="font-family:'Courier New',monospace;font-size:13px;line-height:1.6">${pretty}</pre>`;
+  } catch (e) {
+    return `<pre>${esc(text)}</pre>`;
+  }
+}
+
+function togglePreview() {
+  previewVisible = !previewVisible;
+  const pane = document.getElementById('preview-pane');
+  const resizer = document.getElementById('pane-resizer');
+  const btn = document.getElementById('btn-preview');
+  pane.style.display = previewVisible ? '' : 'none';
+  resizer.style.display = previewVisible ? '' : 'none';
+  btn.textContent = previewVisible ? 'Skrýt' : 'Zobrazit';
+  if (previewVisible) updatePreview();
+}
+
+// ── Templates ───────────────────────────────────────────────
+function allTemplates() {
+  return [...BUILT_IN_TPLS, ...(polyData.customTemplates || [])];
+}
+
+function getTplCss(id) {
+  return (allTemplates().find(t => t.id === id) || BUILT_IN_TPLS[0]).css;
+}
+
+function renderTplList() {
+  const list = document.getElementById('tpl-list');
+  list.innerHTML = '';
+  allTemplates().forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'tpl-item' + (t.id === currentTpl ? ' active' : '')
+                  + (BUILT_IN_TPLS.find(b => b.id === t.id) ? '' : ' custom');
+    div.dataset.id = t.id;
+    div.textContent = t.name;
+    if (!BUILT_IN_TPLS.find(b => b.id === t.id)) {
+      const del = document.createElement('span');
+      del.className = 'tpl-del'; del.textContent = '✕';
+      del.onclick = e => { e.stopPropagation(); removeCustomTpl(t.id); };
+      div.appendChild(del);
+    }
+    div.addEventListener('click', () => applyTpl(t.id));
+    list.appendChild(div);
+  });
+  syncTplSelect();
+}
+
+function syncTplSelect() {
+  const sel = document.getElementById('tpl-select');
+  sel.innerHTML = allTemplates().map(t =>
+    `<option value="${t.id}"${t.id===currentTpl?' selected':''}>${t.name}</option>`).join('');
+  sel.onchange = () => applyTpl(sel.value);
+}
+
+function applyTpl(id) {
+  currentTpl = id;
+  document.querySelectorAll('.tpl-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === id));
+  document.getElementById('tpl-select').value = id;
+  updatePreview();
+}
+
+function removeCustomTpl(id) {
+  polyData.customTemplates = (polyData.customTemplates || []).filter(t => t.id !== id);
+  if (currentTpl === id) applyTpl('default');
+  renderTplList();
+  toast('Šablona odstraněna');
+}
+
+// ── File open ───────────────────────────────────────────────
+function handleFileOpen(input) {
+  const file = input.files[0]; if (!file) return;
+  input.value = '';
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (ext === 'docx') {
+    // Import DOCX → convert to Markdown via mammoth
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const result = await mammoth.convertToMarkdown({ arrayBuffer: e.target.result });
+        cm.setValue(result.value);
+        setMode('markdown');
+        document.getElementById('doc-name').value = file.name.replace(/\.docx$/i, '');
+        updatePreview();
+        toast('DOCX importován jako Markdown ✓');
+      } catch (err) { toast('DOCX import error: ' + err.message, 'error'); }
+    };
+    reader.readAsArrayBuffer(file);
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result.replace(/^\uFEFF/, '');
+    cm.setValue(text);
+    const mode = ext === 'json' ? 'json' : ext === 'xml' ? 'xml' : 'markdown';
+    setMode(mode);
+    document.getElementById('doc-name').value = file.name.replace(/\.[^.]+$/, '');
+    updatePreview();
+    toast(`Načteno: ${file.name} ✓`);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ── Word template ───────────────────────────────────────────
+function handleDocxTemplate(input) {
+  const file = input.files[0]; if (!file) return;
+  input.value = '';
+  const reader = new FileReader();
+  reader.onload = e => {
+    docxTplBuffer = e.target.result;
+    toast(`Word šablona načtena: ${file.name} ✓`, 'info');
+    // detect {{variables}} and show them
+    try {
+      const zip = new PizZip(docxTplBuffer);
+      const xml = zip.file('word/document.xml').asText();
+      const vars = [...new Set([...xml.matchAll(/\{\{(\w+)\}\}/g)].map(m => m[1]))];
+      if (vars.length) toast(`Proměnné v šabloně: ${vars.join(', ')}`, 'info');
+    } catch {}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── CSS template import ─────────────────────────────────────
+function handleCssTpl(input) {
+  const file = input.files[0]; if (!file) return;
+  input.value = '';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const id = 'custom-' + Date.now();
+    const name = '🎨 ' + file.name.replace(/\.css$/i, '');
+    if (!polyData.customTemplates) polyData.customTemplates = [];
+    polyData.customTemplates.push({ id, name, css: e.target.result });
+    renderTplList();
+    applyTpl(id);
+    toast(`Šablona přidána: ${name} ✓`);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ── Exports ─────────────────────────────────────────────────
+function exportMd() {
+  const text = cm.getValue();
+  const name = (document.getElementById('doc-name').value || 'dokument')
+               .replace(/[^a-z0-9čšžýáíéůúěőř\-_ ]/gi, '').trim() || 'dokument';
+  download(text, name + '.md', 'text/markdown');
+  toast('Markdown stažen ✓');
+}
+
+function exportDocx() {
+  const text = cm.getValue();
+  if (!docxTplBuffer) {
+    toast('Nejdřív načti Word šablonu (📋 Word šablona)', 'error');
+    return;
+  }
+  try {
+    // Build simple variable map from markdown: {{var}} → value from JSON content (if any)
+    // Default: render full MD text as single {content} variable
+    const zip = new PizZip(docxTplBuffer);
+    const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+    // Try to parse current JSON content as data, fall back to {content: text}
+    let data = { content: text };
+    if (currentMode === 'json') {
+      try { data = { ...JSON.parse(text), content: text }; } catch {}
+    }
+    doc.render(data);
+    const blob = doc.getZip().generate({
+      type: 'blob',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+    const name = (document.getElementById('doc-name').value || 'dokument') + '.docx';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+    toast('DOCX exportován ✓');
+  } catch (err) {
+    toast('DOCX chyba: ' + err.message, 'error');
+    console.error(err);
+  }
+}
+
+function exportPdf() {
+  const iframe = document.getElementById('preview-iframe');
+  if (!previewVisible) { toast('Zobraz preview před tiskem', 'error'); return; }
+  iframe.contentWindow.print();
+}
+
+// ── Save as HTML ────────────────────────────────────────────
+function saveHtml() {
+  const name = document.getElementById('doc-name').value || 'dokument';
+  const state = {
+    name,
+    mode: currentMode,
+    template: currentTpl,
+    text: cm.getValue(),
+    docxTemplate: docxTplBuffer ? arrayBufferToBase64(docxTplBuffer) : null,
+  };
+  const newPoly = { ...polyData, content: state };
+  const jsonStr = JSON.stringify(newPoly, null, 2)
+    .replace(/<\/script>/gi, '<\\/script>');
+
+  const POLY_RE = /(<script\s+type="application\/poly\+json">)[\s\S]*?(<\/script>)/;
+  const html = document.documentElement.outerHTML
+    .replace(POLY_RE, (_, open, close) => open + '\n' + jsonStr + '\n' + close);
+
+  const fname = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') + '.html';
+  download(html, fname || 'polydoc.html', 'text/html');
+  toast('HTML uloženo ✓');
+}
+
+// ── Offline integration ─────────────────────────────────────
+async function makeOffline() {
+  toast('Stahuji knihovny…', 'info');
+  const MARKERS = ['cm', 'marked', 'mammoth', 'docx'];
+  let html = document.documentElement.outerHTML;
+
+  for (const m of MARKERS) {
+    const re = new RegExp(`<!-- polydoc:${m}-start -->[\\s\\S]*?<!-- polydoc:${m}-end -->`);
+    const block = html.match(re)?.[0];
+    if (!block) continue;
+    const urls = [...block.matchAll(/(?:src|href)="(https?:\/\/[^"]+)"/g)].map(x => x[1]);
+    let inlined = `<!-- polydoc:${m}-start -->`;
+    for (const url of urls) {
+      try {
+        const text = await fetch(url).then(r => r.text());
+        inlined += url.endsWith('.css')
+          ? `\n<style>${text}</style>`
+          : `\n<script>${text.replace(/<\/script>/gi, '<\\/script>')}<\/script>`;
+      } catch (e) { toast('Fetch error: ' + url, 'error'); return; }
+    }
+    inlined += `\n<!-- polydoc:${m}-end -->`;
+    html = html.replace(re, () => inlined);
+  }
+
+  download(html, 'polydoc-editor-offline.html', 'text/html');
+  toast('Offline verze stažena ✓ (~1.5 MB)');
+}
+
+// ── Drag & drop ─────────────────────────────────────────────
+function initDragDrop() {
+  const pane = document.getElementById('editor-pane');
+  pane.addEventListener('dragover', e => {
+    if ([...e.dataTransfer.items].some(i => i.kind === 'file')) {
+      e.preventDefault(); pane.classList.add('drag-over');
+    }
+  });
+  pane.addEventListener('dragleave', e => {
+    if (!pane.contains(e.relatedTarget)) pane.classList.remove('drag-over');
+  });
+  pane.addEventListener('drop', e => {
+    e.preventDefault(); pane.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0]; if (!file) return;
+    const fakeInput = { files: [file], value: '' };
+    handleFileOpen(fakeInput);
+  });
+}
+
+// ── Panel resizers ───────────────────────────────────────────
+function initResizers() {
+  // Sidebar resizer
+  makeResizer('sidebar-resizer', 'sidebar', 140, 380, 'width');
+  // Preview resizer (dragging from left edge of preview)
+  makeResizer('pane-resizer', 'preview-pane', 160, 700, 'width', true);
+}
+
+function makeResizer(resizerId, targetId, min, max, prop, reverse = false) {
+  const resizer = document.getElementById(resizerId);
+  const target  = document.getElementById(targetId);
+  let startX, startSize;
+
+  resizer.addEventListener('mousedown', e => {
+    startX = e.clientX;
+    startSize = target.getBoundingClientRect()[prop];
+    resizer.classList.add('dragging');
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+
+  function onMove(e) {
+    const delta = reverse ? startX - e.clientX : e.clientX - startX;
+    const size = Math.min(max, Math.max(min, startSize + delta));
+    target.style[prop] = size + 'px';
+    if (cm) cm.refresh();
+  }
+  function onUp() {
+    resizer.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+}
+
+// ── Utilities ────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function download(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function arrayBufferToBase64(buf) {
+  let binary = '';
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(b64) {
+  const binary = atob(b64);
+  const buf = new ArrayBuffer(binary.length);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
+  return buf;
+}
+
+let _toastTimer;
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = type + ' show';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.className = '', 3000);
+}
+</script>
+</body>
+</html>
